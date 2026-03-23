@@ -6,6 +6,11 @@ import com.supermarket.data.getCart
 import com.supermarket.data.getOrders
 import com.supermarket.models.Product
 import com.supermarket.models.UserSession
+import com.supermarket.data.lowStockCount
+import com.supermarket.data.outOfStockCount
+import com.supermarket.data.totalOrdersCount
+import com.supermarket.data.totalProductsCount
+import com.supermarket.data.totalSalesAmount
 
 fun nav(session: UserSession, currentPage: String = "") = """
     <nav class="topbar">
@@ -663,24 +668,59 @@ fun adminHtml(session: UserSession) = """
 <body>
 ${nav(session, "admin")}
 <div class="container">
-    <h1>Admin Panel</h1>
+    <h1>Admin Dashboard</h1>
+    <p class="muted">Overview of supermarket performance and stock status.</p>
 
     <div class="card-grid">
         <div class="card">
+            <h3>Total Orders</h3>
+            <p><strong>${totalOrdersCount()}</strong></p>
+            <p class="muted">Number of orders placed by all users.</p>
+        </div>
+
+        <div class="card">
             <h3>Total Sales</h3>
-            <p><strong>£1,245.80</strong></p>
-            <p class="muted">Static demo value for now.</p>
+            <p><strong>£${"%.2f".format(totalSalesAmount())}</strong></p>
+            <p class="muted">Total value of all completed orders.</p>
         </div>
+
         <div class="card">
-            <h3>Top Category</h3>
-            <p><strong>Fruit & Vegetables</strong></p>
-            <p class="muted">Placeholder analytics content.</p>
+            <h3>Products</h3>
+            <p><strong>${totalProductsCount()}</strong></p>
+            <p class="muted">Total number of products in the catalogue.</p>
         </div>
+
         <div class="card">
-            <h3>Trending Item</h3>
-            <p><strong>Fresh Apples</strong></p>
-            <p class="muted">Can be connected to real metrics later.</p>
+            <h3>Low Stock Items</h3>
+            <p><strong>${lowStockCount()}</strong></p>
+            <p class="muted">Products currently marked as low stock.</p>
         </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+        <h2>Inventory Summary</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>In stock</td>
+                    <td>${totalProductsCount() - lowStockCount() - outOfStockCount()}</td>
+                </tr>
+                <tr>
+                    <td>Low stock</td>
+                    <td>${lowStockCount()}</td>
+                </tr>
+                <tr>
+                    <td>Out of stock</td>
+                    <td>${outOfStockCount()}</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 </body>

@@ -105,3 +105,23 @@ fun updateProductStock(productId: Int, newStock: String) {
     val product = findProduct(productId) ?: return
     product.stock = newStock
 }
+
+fun totalOrdersCount(): Int {
+    return ordersByUser.values.sumOf { it.size }
+}
+
+fun totalSalesAmount(): Double {
+    return ordersByUser.values.flatten().sumOf { it.total }
+}
+
+fun totalProductsCount(): Int {
+    return sampleProducts.size
+}
+
+fun lowStockCount(): Int {
+    return sampleProducts.count { it.stock == "Low stock" }
+}
+
+fun outOfStockCount(): Int {
+    return sampleProducts.count { it.stock == "Out of stock" }
+}
