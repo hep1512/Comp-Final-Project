@@ -22,7 +22,7 @@ A web-based supermarket management system built using **Ktor** and **Kotlin**. T
 ---
 
 ## Installation
-0
+
 1. Clone the repository:
    git clone https://github.com/hep1512/Comp-Final-Project
    cd Comp-Final-Project
@@ -63,7 +63,7 @@ A web-based supermarket management system built using **Ktor** and **Kotlin**. T
 
 ## Developers
 
-- Henry Payne – Backend, Routing & Session management
+- Henry Payne – Backend, Routing & Session Management
 - Junhao Shen – Frontend, Templates & HTML
 - Charlelie Chagas Poinsot – Database Design & Data Management
 - Ella Ford - Testing, User feedback **UPDATE**
