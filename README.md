@@ -1,39 +1,77 @@
-# ktor-sample
+# Supermarket Management System
 
-This project was created using the [Ktor Project Generator](https://start.ktor.io).
+A web-based supermarket management system built using **Ktor** and **Kotlin**. This system allows users to browse products, manage a shopping cart, checkout, view orders, and for employees/admins to manage inventory and users.  
 
-Here are some useful links to get you started:
-
-- [Ktor Documentation](https://ktor.io/docs/home.html)
-- [Ktor GitHub page](https://github.com/ktorio/ktor)
-- The [Ktor Slack chat](https://app.slack.com/client/T09229ZC6/C0A974TJ9). You'll need to [request an invite](https://surveys.jetbrains.com/s3/kotlin-slack-sign-up) to join.
+---
 
 ## Features
 
-Here's a list of features included in this project:
+### User Features
+- User authentication: Login/logout functionality with secure password hashing and secure session cookies using JWT.
+- Product browsing: View all products and detailed information about them.
+- Shopping cart: Add, update, and remove items from the cart.
+- Checkout: Complete purchases and view order history.
 
-| Name                                               | Description                                                 |
-| ----------------------------------------------------|------------------------------------------------------------- |
-| [Routing](https://start.ktor.io/p/routing-default) | Allows to define structured routes and associated handlers. |
+### Employee Features
+- Inventory management: Update product stock status (In stock, Low stock, Out of stock).
 
-## Building & Running
+### Admin Features
+- User management: View all registered users and their roles.
+- Access control: Restrict specific routes based on user roles (EMPLOYEE, ADMIN).
 
-To build or run the project, use one of the following tasks:
+---
 
-| Task                                    | Description                                                          |
-| -----------------------------------------|---------------------------------------------------------------------- |
-| `./gradlew test`                        | Run the tests                                                        |
-| `./gradlew build`                       | Build everything                                                     |
-| `./gradlew buildFatJar`                 | Build an executable JAR of the server with all dependencies included |
-| `./gradlew buildImage`                  | Build the docker image to use with the fat JAR                       |
-| `./gradlew publishImageToLocalRegistry` | Publish the docker image locally                                     |
-| `./gradlew run`                         | Run the server                                                       |
-| `./gradlew runDocker`                   | Run using the local docker image                                     |
+## Installation
+0
+1. Clone the repository:
+   git clone https://github.com/hep1512/Comp-Final-Project
+   cd Comp-Final-Project
 
-If the server starts successfully, you'll see the following output:
+2. Ensure you have JDK 17+ installed.
 
-```
-2024-12-04 14:32:45.584 [main] INFO  Application - Application started in 0.303 seconds.
-2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
-```
+3. Build and run the project:
+   ./gradlew run
 
+4. Access the app: Open your browser at http://localhost:8080
+
+---
+
+## Project Structure
+
+- com.supermarket.routes: All HTTP route handlers and session logic.
+- com.supermarket.data: Handles data operations such as user management, cart actions, and product stock updates.
+- com.supermarket.models: Contains data models like UserSession and Role.
+
+---
+
+## Usage
+
+- Login: /login
+- Dashboard: /dashboard
+- Product list: /products
+- Product details: /products/{id}
+- Cart: /cart
+- Checkout: /checkout
+- Order history: /orders
+- Inventory management (Employee/Admin only): /inventory
+- Admin dashboard: /admin
+- User management (Admin only): /admin/users
+
+> Routes are protected based on session and role. Users without the required role will see a forbidden page.
+
+---
+
+## Developers
+
+- Henry Payne – Backend, Routing & Session management
+- Junhao Shen – Frontend, Templates & HTML
+- Charlelie Chagas Poinsot – Database Design & Data Management
+- Ella Ford - Testing, User feedback **UPDATE**
+
+---
+
+## Security
+
+- Passwords are stored as hashes using a custom hashPassword function.
+- Session-based authentication with role-based access control.
+- Secure JWT token based session management
