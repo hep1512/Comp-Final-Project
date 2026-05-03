@@ -1,12 +1,17 @@
 ktor:
-    application:
-        modules:
-            - com.supermarket.ApplicationKt.module
-    deployment:
-        port: 8080
+  application:
+    modules:
+      - com.supermarket.ApplicationKt.module
+  deployment:
+    port: 8080
 
 jwt:
   secret: "secret123"
   issuer: "supermarket-app"
   audience: "supermarket-users"
   realm: "Supermarket"
+
+database:
+  url: "jdbc:postgresql://ep-lively-lab-abnlertt-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+  user: "neondb_owner"
+  password: "npg_Xp5QSzcibq7m"

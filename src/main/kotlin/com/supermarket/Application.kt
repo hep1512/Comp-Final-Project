@@ -15,14 +15,20 @@ import io.ktor.http.*
 import io.ktor.server.sessions.*
 import com.supermarket.models.UserSession
 
+import com.supermarket.database.configureDatabase
+
+
 fun main() {
     embeddedServer(Netty, port = 8080) {
         module()
     }.start(wait = true)
 }
 
+
+
 fun Application.module() {
     // loadup the session cookies
+    configureDatabase() 
     install(Sessions) {
         cookie<UserSession>("SESSION", SessionStorageMemory()) {
             cookie.httpOnly = true
