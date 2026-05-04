@@ -1,4 +1,5 @@
 package com.supermarket.database
+import org.jetbrains.exposed.sql.Table
 
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.javatime.timestampWithTimeZone
@@ -55,4 +56,27 @@ object WarehouseStock : UUIDTable("warehouse_stock") {
     val quantityAvailable  = integer("quantity_available")
     val quantityReserved   = integer("quantity_reserved")
     val lowStockThreshold  = integer("low_stock_threshold")
+}
+object DbOrders : UUIDTable("orders") {
+    val userId          = reference("user_id", Users)
+    val addressId       = uuid("address_id")
+    val status          = text("status").default("pending_payment")
+    val totalAmount     = decimal("total_amount", 10, 2)
+    val placedAt        = timestampWithTimeZone("placed_at").nullable()
+}
+
+object DbOrderItems : UUIDTable("order_items") {
+    val orderId         = reference("order_id", DbOrders)
+    val productId       = reference("product_id", Products)
+    val quantity        = integer("quantity")
+    val unitPrice       = decimal("unit_price", 10, 2)
+    val status          = text("status").default("pending")
+}
+
+object Addresses : UUIDTable("addresses") {
+    val userId     = reference("user_id", Users)
+    val line1      = text("line1")
+    val city       = text("city")
+    val postcode   = text("postcode")
+    val isDefault  = bool("is_default").default(false)
 }

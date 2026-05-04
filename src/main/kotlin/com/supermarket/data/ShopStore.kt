@@ -4,9 +4,15 @@ import com.supermarket.models.CartLine
 import com.supermarket.models.OrderSummary
 import com.supermarket.models.Product
 import com.supermarket.repositories.ProductRepository
+import com.supermarket.repositories.OrderRepository
+import java.security.MessageDigest
 
 private val cartsByUser = mutableMapOf<String, MutableList<CartLine>>()
-private val ordersByUser = mutableMapOf<String, MutableList<OrderSummary>>()
+
+fun hashPassword(password: String): String {
+    val bytes = MessageDigest.getInstance("SHA-256").digest(password.toByteArray())
+    return bytes.joinToString("") { "%02x".format(it) }
+}
 
 fun allProducts(): List<Product> = ProductRepository.allProducts()
 
@@ -16,9 +22,7 @@ fun getCart(username: String): MutableList<CartLine> {
     return cartsByUser.getOrPut(username) { mutableListOf() }
 }
 
-fun getOrders(username: String): MutableList<OrderSummary> {
-    return ordersByUser.getOrPut(username) { mutableListOf() }
-}
+fun getOrders(username: String): List<OrderSummary> = OrderRepository.getOrders(username)
 
 fun addProductToCart(username: String, productId: Int, quantity: Int) {
     if (quantity <= 0) return
@@ -49,29 +53,18 @@ fun removeFromCart(username: String, productId: Int) {
 fun checkoutCart(username: String) {
     val cart = getCart(username)
     if (cart.isEmpty()) return
-    val total = cart.sumOf { line ->
-        val product = findProduct(line.productId) ?: return@sumOf 0.0
-        product.price * line.quantity
-    }
-    val orders = getOrders(username)
-    val nextId = "ORD-" + (1000 + orders.size + 1)
-    orders.add(
-        OrderSummary(
-            orderId = nextId,
-            date = "2026-03-23",
-            status = "Placed",
-            total = total
-        )
-    )
+    OrderRepository.checkout(username, cart)
     cart.clear()
 }
 
 fun updateProductStock(productId: Int, newStock: String) {
+    // Now handled via database
 }
 
-fun totalOrdersCount(): Int = ordersByUser.values.sumOf { it.size }
+fun totalOrdersCount(): Int = OrderRepository.totalOrdersCount()
 
-fun totalSalesAmount(): Double = ordersByUser.values.flatten().sumOf { it.total }
+fun totalSalesAmount(): Double = OrderRepository.totalSalesAmount()
+
 fun totalProductsCount(): Int = ProductRepository.allProducts().size
 
 fun lowStockCount(): Int = ProductRepository.allProducts().count { it.stock == "Low stock" }
