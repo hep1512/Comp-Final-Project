@@ -27,6 +27,7 @@ fun nav(session: UserSession, currentPage: String = "") = """
                 ${if (session.role == "EMPLOYEE" || session.role == "ADMIN") "<a class=\"${if (currentPage == "inventory") "active" else ""}\" href=\"/inventory\">Inventory</a>" else ""}
                 ${if (session.role == "ADMIN") "<a class=\"${if (currentPage == "admin") "active" else ""}\" href=\"/admin\">Admin</a>" else ""}
                 ${if (session.role == "ADMIN") "<a class=\"${if (currentPage == "users") "active" else ""}\" href=\"/admin/users\">Users</a>" else ""}
+                ${if (session.role == "ADMIN") "<a class=\"${if (currentPage == "analytics") "active" else ""}\" href=\"/analytics\">Analytics</a>" else ""}
             </div>
 
             <div class="nav-right">
@@ -792,3 +793,114 @@ ${nav(session)}
 </body>
 </html>
 """.trimIndent()
+
+fun analyticsHtml(
+    session: UserSession,
+    bestSellers: List<com.supermarket.repositories.ProductSales>,
+    categorySales: List<com.supermarket.repositories.CategorySales>,
+    lowStock: List<Triple<String, String, Int>>
+): String {
+    val bestSellersRows = if (bestSellers.isEmpty()) {
+        "<tr><td colspan='4'>No sales data yet — place some orders first.</td></tr>"
+    } else {
+        bestSellers.joinToString("") { p ->
+            """
+            <tr>
+                <td>${p.name}</td>
+                <td>${p.category}</td>
+                <td>${p.unitsSold}</td>
+                <td>£${"%.2f".format(p.revenue)}</td>
+            </tr>
+            """
+        }
+    }
+
+    val categoryRows = if (categorySales.isEmpty()) {
+        "<tr><td colspan='3'>No sales data yet.</td></tr>"
+    } else {
+        categorySales.joinToString("") { c ->
+            """
+            <tr>
+                <td>${c.category}</td>
+                <td>${c.unitsSold}</td>
+                <td>£${"%.2f".format(c.revenue)}</td>
+            </tr>
+            """
+        }
+    }
+
+    val lowStockRows = if (lowStock.isEmpty()) {
+        "<tr><td colspan='3'>All products have healthy stock levels.</td></tr>"
+    } else {
+        lowStock.joinToString("") { (name, sku, qty) ->
+            val color = if (qty == 0) "color:red;" else "color:orange;"
+            """
+            <tr>
+                <td>$name</td>
+                <td>$sku</td>
+                <td style="$color"><strong>$qty</strong></td>
+            </tr>
+            """
+        }
+    }
+
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analytics</title>
+    ${commonStyles()}
+</head>
+<body>
+${nav(session, "analytics")}
+<div class="container">
+    <h1>Management Analytics</h1>
+    <p class="muted">Sales performance and stock overview.</p>
+
+    <h2>Best Selling Products</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            $bestSellersRows
+        </tbody>
+    </table>
+
+    <h2 style="margin-top:2rem;">Sales by Category</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            $categoryRows
+        </tbody>
+    </table>
+
+    <h2 style="margin-top:2rem;">Low Stock Alert</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Quantity Available</th>
+            </tr>
+        </thead>
+        <tbody>
+            $lowStockRows
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
+""".trimIndent()
+}

@@ -9,6 +9,7 @@ import com.supermarket.data.updateCartQuantity
 import com.supermarket.data.userStore
 import com.supermarket.models.Role
 import com.supermarket.models.UserSession
+import com.supermarket.repositories.AnalyticsRepository
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -171,6 +172,19 @@ fun Application.registerRoutes() {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
             requireRole(call, session, Role.ADMIN) {
                 call.respondText(adminHtml(session), ContentType.Text.Html)
+            }
+        }
+
+        get("/analytics") {
+            val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
+            requireRole(call, session, Role.ADMIN) {
+                val bestSellers = AnalyticsRepository.bestSellers()
+                val categorySales = AnalyticsRepository.salesByCategory()
+                val lowStock = AnalyticsRepository.lowStockProducts()
+                call.respondText(
+                    analyticsHtml(session, bestSellers, categorySales, lowStock),
+                    ContentType.Text.Html
+                )
             }
         }
 
