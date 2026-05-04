@@ -318,6 +318,9 @@ fun loginPageHtml(error: String = "") = """
         <button type="submit">Login</button>
     </form>
     ${if (error.isNotEmpty()) "<p class=\"error\">$error</p>" else ""}
+    <p style="margin-top:1rem; text-align:center; font-size:.9rem;">
+    Don't have an account? <a href="/register" style="color:#2e7d32;">Register</a>
+    </p>
 </div>
 </body>
 </html>
@@ -958,6 +961,70 @@ ${nav(session, "admin")}
             </div>
         </form>
     </div>
+</div>
+</body>
+</html>
+""".trimIndent()
+
+fun registerPageHtml(error: String = "", success: String = "") = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+            margin:0;
+            background:#f0f4f8;
+        }
+        .box {
+            background:white;
+            padding:2rem;
+            border-radius:12px;
+            box-shadow:0 2px 10px rgba(0,0,0,.15);
+            width:320px;
+        }
+        h1 { margin-top:0; }
+        input {
+            width:100%;
+            padding:.7rem;
+            margin:.4rem 0 1rem;
+            box-sizing:border-box;
+            border:1px solid #ccc;
+            border-radius:8px;
+        }
+        button {
+            width:100%;
+            padding:.8rem;
+            background:#2e7d32;
+            color:white;
+            border:none;
+            border-radius:8px;
+            cursor:pointer;
+            font-size:1rem;
+        }
+        .error   { margin-top:1rem; color:red;   font-size:.9rem; }
+        .success { margin-top:1rem; color:green; font-size:.9rem; }
+        .login-link { margin-top:1rem; text-align:center; font-size:.9rem; }
+        a { color:#2e7d32; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h1>Create Account</h1>
+    <form method="post" action="/register">
+        <input type="text"     name="username"  placeholder="Username"         required />
+        <input type="password" name="password"  placeholder="Password"         required />
+        <input type="password" name="password2" placeholder="Confirm Password" required />
+        <button type="submit">Register</button>
+    </form>
+    ${if (error.isNotEmpty())   "<p class=\"error\">$error</p>"     else ""}
+    ${if (success.isNotEmpty()) "<p class=\"success\">$success</p>" else ""}
+    <p class="login-link">Already have an account? <a href="/login">Login</a></p>
 </div>
 </body>
 </html>

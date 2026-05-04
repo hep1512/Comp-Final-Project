@@ -3,7 +3,7 @@ package com.supermarket.routes
 import com.supermarket.data.addProductToCart
 import com.supermarket.data.checkoutCart
 import com.supermarket.data.findProduct
-import com.supermarket.data.hashPassword
+import com.supermarket.repositories.UserRepository
 import com.supermarket.data.removeFromCart
 import com.supermarket.data.updateCartQuantity
 import com.supermarket.data.userStore
@@ -28,6 +28,7 @@ import io.ktor.server.sessions.sessions
 import io.ktor.server.sessions.set
 import com.supermarket.data.updateProductStock
 
+
 fun Application.registerRoutes() {
     routing {
         get("/") {
@@ -49,7 +50,7 @@ fun Application.registerRoutes() {
             val password = params["password"] ?: ""
             val user = userStore[username]
 
-            if (user == null || user.passwordHash != hashPassword(password)) {
+            if (user == null || user.passwordHash != UserRepository.hashPassword(password)) {
                 call.respondText(loginPageHtml("Invalid username or password."), ContentType.Text.Html)
                 return@post
             }
@@ -234,6 +235,56 @@ fun Application.registerRoutes() {
                         addProductHtml(session, error = "Error adding product: ${e.message}"),
                         ContentType.Text.Html
                     )
+                }
+            }
+        }
+        get("/register") {
+            val session = call.sessions.get<UserSession>()
+            if (session != null) {
+                call.respondRedirect("/dashboard")
+                return@get
+            }
+            call.respondText(registerPageHtml(), ContentType.Text.Html)
+        }
+
+        post("/register") {
+            val params    = call.receiveParameters()
+            val username  = params["username"]  ?: ""
+            val password  = params["password"]  ?: ""
+            val password2 = params["password2"] ?: ""
+
+            when {
+                username.isBlank() || password.isBlank() -> {
+                    call.respondText(
+                        registerPageHtml(error = "Please fill in all fields."),
+                        ContentType.Text.Html
+                    )
+                }
+                password != password2 -> {
+                    call.respondText(
+                        registerPageHtml(error = "Passwords do not match."),
+                        ContentType.Text.Html
+                    )
+                }
+                password.length < 6 -> {
+                    call.respondText(
+                        registerPageHtml(error = "Password must be at least 6 characters."),
+                        ContentType.Text.Html
+                    )
+                }
+                else -> {
+                    val created = UserRepository.registerUser(username, password)
+                    if (created) {
+                        call.respondText(
+                            registerPageHtml(success = "Account created! You can now log in."),
+                            ContentType.Text.Html
+                        )
+                    } else {
+                        call.respondText(
+                            registerPageHtml(error = "Username already taken."),
+                            ContentType.Text.Html
+                        )
+                    }
                 }
             }
         }

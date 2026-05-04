@@ -9,21 +9,21 @@ import java.security.MessageDigest
 
 object UserRepository {
 
-    private fun hashPassword(password: String): String {
+    fun hashPassword(password: String): String {
         val bytes = MessageDigest.getInstance("SHA-256").digest(password.toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
     private fun rowToUser(row: ResultRow): User {
         val role = when (row[Users.role]) {
-            "admin" -> Role.ADMIN
-            "picker", "warehouse_manager" -> Role.EMPLOYEE
-            else -> Role.USER
+            "admin"                        -> Role.ADMIN
+            "picker", "warehouse_manager"  -> Role.EMPLOYEE
+            else                           -> Role.USER
         }
         return User(
-            username = row[Users.firstName],
+            username     = row[Users.firstName],
             passwordHash = row[Users.passwordHash],
-            role = role
+            role         = role
         )
     }
 
@@ -45,17 +45,34 @@ object UserRepository {
 
         if (!exists) {
             val dbRole = when (role) {
-                Role.ADMIN -> "admin"
+                Role.ADMIN    -> "admin"
                 Role.EMPLOYEE -> "picker"
-                Role.USER -> "customer"
+                Role.USER     -> "customer"
             }
             Users.insert {
-                it[firstName] = username
-                it[lastName] = username
-                it[email] = "$username@supermarket.com"
+                it[firstName]    = username
+                it[lastName]     = username
+                it[email]        = "$username@supermarket.com"
                 it[passwordHash] = hashPassword(password)
-                it[Users.role] = dbRole
+                it[Users.role]   = dbRole
             }
         }
+    }
+
+    fun registerUser(username: String, password: String): Boolean = transaction {
+        val exists = Users.selectAll()
+            .map { it[Users.firstName] }
+            .any { it == username }
+
+        if (exists) return@transaction false
+
+        Users.insert {
+            it[firstName]    = username
+            it[lastName]     = username
+            it[email]        = "$username@supermarket.com"
+            it[passwordHash] = hashPassword(password)
+            it[Users.role]   = "customer"
+        }
+        true
     }
 }
