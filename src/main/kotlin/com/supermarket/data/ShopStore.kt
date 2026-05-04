@@ -3,6 +3,7 @@ package com.supermarket.data
 import com.supermarket.models.CartLine
 import com.supermarket.models.OrderSummary
 import com.supermarket.models.Product
+import com.supermarket.repositories.StockRepository
 import com.supermarket.repositories.ProductRepository
 import com.supermarket.repositories.OrderRepository
 import java.security.MessageDigest
@@ -58,7 +59,7 @@ fun checkoutCart(username: String) {
 }
 
 fun updateProductStock(productId: Int, newStock: String) {
-    // Now handled via database
+    StockRepository.updateStock(productId, newStock)
 }
 
 fun totalOrdersCount(): Int = OrderRepository.totalOrdersCount()
