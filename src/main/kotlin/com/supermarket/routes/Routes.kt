@@ -9,6 +9,7 @@ import com.supermarket.data.updateCartQuantity
 import com.supermarket.data.userStore
 import com.supermarket.models.Role
 import com.supermarket.models.UserSession
+import com.supermarket.repositories.ProductRepository
 import com.supermarket.repositories.AnalyticsRepository
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -195,6 +196,45 @@ fun Application.registerRoutes() {
                     "<tr><td>${it.username}</td><td>${it.role}</td></tr>"
                 }
                 call.respondText(adminUsersHtml(session, userList), ContentType.Text.Html)
+            }
+        }
+        get("/admin/products/add") {
+            val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
+            requireRole(call, session, Role.ADMIN) {
+                call.respondText(addProductHtml(session), ContentType.Text.Html)
+            }
+        }
+
+        post("/admin/products/add") {
+            val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
+            requireRole(call, session, Role.ADMIN) {
+                val params = call.receiveParameters()
+                val name        = params["name"]        ?: ""
+                val description = params["description"] ?: ""
+                val category    = params["category"]    ?: ""
+                val price       = params["price"]?.toDoubleOrNull()
+                val sku         = params["sku"]         ?: ""
+
+                if (name.isBlank() || sku.isBlank() || price == null) {
+                    call.respondText(
+                        addProductHtml(session, error = "Please fill in all required fields."),
+                        ContentType.Text.Html
+                    )
+                    return@requireRole
+                }
+
+                try {
+                    ProductRepository.addProduct(name, description, category, price, sku)
+                    call.respondText(
+                        addProductHtml(session, success = "Product '$name' added successfully!"),
+                        ContentType.Text.Html
+                    )
+                } catch (e: Exception) {
+                    call.respondText(
+                        addProductHtml(session, error = "Error adding product: ${e.message}"),
+                        ContentType.Text.Html
+                    )
+                }
             }
         }
     }

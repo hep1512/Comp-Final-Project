@@ -696,6 +696,11 @@ ${nav(session, "admin")}
             <p><strong>${lowStockCount()}</strong></p>
             <p class="muted">Products currently marked as low stock.</p>
         </div>
+        <div class="card">
+            <h3>Add Product</h3>
+            <p class="muted">Add a new product to the catalogue.</p>
+            <a class="btn" href="/admin/products/add">Add Product</a>
+        </div>
     </div>
 
     <div class="card" style="margin-top: 1.5rem;">
@@ -904,3 +909,56 @@ ${nav(session, "analytics")}
 </html>
 """.trimIndent()
 }
+
+fun addProductHtml(session: UserSession, error: String = "", success: String = "") = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Product</title>
+    ${commonStyles()}
+</head>
+<body>
+${nav(session, "admin")}
+<div class="container">
+    <h1>Add New Product</h1>
+    <p class="muted">Fill in the details below to add a product to the catalogue.</p>
+
+    ${if (success.isNotEmpty()) "<div style='background:#e8f5e9;color:#1b5e20;padding:1rem;border-radius:8px;margin-bottom:1rem;'>$success</div>" else ""}
+    ${if (error.isNotEmpty()) "<div style='background:#ffebee;color:#b71c1c;padding:1rem;border-radius:8px;margin-bottom:1rem;'>$error</div>" else ""}
+
+    <div class="form-box">
+        <form method="post" action="/admin/products/add">
+            <label>Product Name</label>
+            <input type="text" name="name" placeholder="e.g. Organic Apples" required />
+
+            <label>Description</label>
+            <input type="text" name="description" placeholder="e.g. Fresh organic apples from local farms" />
+
+            <label>Category</label>
+            <select name="category">
+                <option value="fruit-vegetables">Fruit & Vegetables</option>
+                <option value="dairy-eggs">Dairy & Eggs</option>
+                <option value="bakery">Bakery</option>
+                <option value="meat-fish">Meat & Fish</option>
+                <option value="drinks">Drinks</option>
+            </select>
+
+            <label>Price (£)</label>
+            <input type="number" name="price" step="0.01" min="0" placeholder="e.g. 1.99" required />
+
+            <label>SKU</label>
+            <input type="text" name="sku" placeholder="e.g. SKU-APL-002" required />
+
+            <label>Initial Stock Quantity</label>
+            <input type="number" name="stock" min="0" value="100" required />
+
+            <div class="actions">
+                <button class="btn" type="submit">Add Product</button>
+                <a class="btn secondary" href="/admin">Back to Admin</a>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>
+""".trimIndent()

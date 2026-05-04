@@ -80,3 +80,10 @@ object Addresses : UUIDTable("addresses") {
     val postcode   = text("postcode")
     val isDefault  = bool("is_default").default(false)
 }
+
+object Warehouses : UUIDTable("warehouses") {
+    val name      = text("name")
+    val address   = text("address")
+    val postcode  = text("postcode")
+    val isActive  = bool("is_active").default(true)
+}
