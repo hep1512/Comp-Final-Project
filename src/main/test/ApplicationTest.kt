@@ -7,7 +7,6 @@ class ApplicationTest {
 
     @Test
     fun cartTotalIsCalculatedCorrectly() {
-        println("Testing cart total calculation")
 
         val price = 2.50
         val quantity = 3
@@ -18,7 +17,6 @@ class ApplicationTest {
 
     @Test
     fun inventoryIsReducedAfterOrder() {
-        println("Testing inventory reduction after order")
 
         val stockBefore = 10
         val quantityBought = 3
@@ -29,7 +27,6 @@ class ApplicationTest {
 
     @Test
     fun negativeQuantityIsRejected() {
-        println("Testing negative quantity validation")
 
         val quantity = -2
 
@@ -38,7 +35,6 @@ class ApplicationTest {
 
     @Test
     fun emptyUsernameIsInvalid() {
-        println("Testing empty username validation")
 
         val username = ""
 
@@ -47,7 +43,6 @@ class ApplicationTest {
 
     @Test
     fun negativePriceIsRejected() {
-        println("Testing negative price validation")
 
         val price = -1.99
 
@@ -56,7 +51,6 @@ class ApplicationTest {
 
     @Test
     fun checkoutCannotHappenWithEmptyCart() {
-        println("Testing checkout validation with empty cart")
 
         val cartItems = 0
 
@@ -66,10 +60,25 @@ class ApplicationTest {
 
     @Test
     fun productsPageLoads() = testApplication {
-    application { module() }
+        application { module() }
 
-    val response = client.get("/products")
+        val response = client.get("/products")
 
-    assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun specialCharactersInUsernameAreHandled() {
+        val username = "admin@#£"
+
+        assertFalse(username.matches(Regex("^[a-zA-Z0-9_]+$")))
+    }
+
+    @Test
+    fun veryLargeQuantityIsRejected() {
+        val quantity = 1000000
+        val availableStock = 50
+
+        assertFalse(quantity <= availableStock)
     }
 }
