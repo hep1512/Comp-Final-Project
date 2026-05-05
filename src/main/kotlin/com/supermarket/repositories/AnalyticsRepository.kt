@@ -1,6 +1,7 @@
 package com.supermarket.repositories
 
 import com.supermarket.database.DbOrderItems
+import com.supermarket.database.DbOrders
 import com.supermarket.database.Products
 import com.supermarket.database.Categories
 import com.supermarket.database.WarehouseStock
@@ -20,7 +21,41 @@ data class CategorySales(
     val revenue: Double
 )
 
+data class OrderSpendBand(
+    val label: String,
+    val orderCount: Int
+)
+
+data class MarketingDashboardStats(
+    val bestSellers: List<ProductSales>,
+    val categorySales: List<CategorySales>,
+    val orderSpendBands: List<OrderSpendBand>,
+    val totalOrders: Int,
+    val totalRevenue: Double,
+    val averageOrderValue: Double,
+    val totalUnitsSold: Int,
+    val averageItemsPerOrder: Double
+)
+
 object AnalyticsRepository {
+
+    fun marketingDashboardStats(): MarketingDashboardStats {
+        val bestSellers = bestSellers()
+        val categorySales = salesByCategory()
+        val orderSpendBands = orderSpendBands()
+        val summary = marketingSummary()
+
+        return MarketingDashboardStats(
+            bestSellers = bestSellers,
+            categorySales = categorySales,
+            orderSpendBands = orderSpendBands,
+            totalOrders = summary.totalOrders,
+            totalRevenue = summary.totalRevenue,
+            averageOrderValue = summary.averageOrderValue,
+            totalUnitsSold = summary.totalUnitsSold,
+            averageItemsPerOrder = summary.averageItemsPerOrder
+        )
+    }
 
     fun bestSellers(): List<ProductSales> = transaction {
         (DbOrderItems innerJoin Products innerJoin Categories)
@@ -80,4 +115,41 @@ object AnalyticsRepository {
             .filter { it.third <= 10 }
             .sortedBy { it.third }
     }
+
+    private fun marketingSummary(): MarketingSummary = transaction {
+        val orderTotals = DbOrders.selectAll()
+            .map { it[DbOrders.totalAmount].toDouble() }
+        val totalOrders = orderTotals.size
+        val totalRevenue = orderTotals.sum()
+        val totalUnitsSold = DbOrderItems.selectAll()
+            .sumOf { it[DbOrderItems.quantity] }
+
+        MarketingSummary(
+            totalOrders = totalOrders,
+            totalRevenue = totalRevenue,
+            averageOrderValue = if (totalOrders == 0) 0.0 else totalRevenue / totalOrders,
+            totalUnitsSold = totalUnitsSold,
+            averageItemsPerOrder = if (totalOrders == 0) 0.0 else totalUnitsSold.toDouble() / totalOrders
+        )
+    }
+
+    private fun orderSpendBands(): List<OrderSpendBand> = transaction {
+        val totals = DbOrders.selectAll()
+            .map { it[DbOrders.totalAmount].toDouble() }
+
+        listOf(
+            OrderSpendBand("Under GBP 10", totals.count { it < 10.0 }),
+            OrderSpendBand("GBP 10 to GBP 25", totals.count { it >= 10.0 && it < 25.0 }),
+            OrderSpendBand("GBP 25 to GBP 50", totals.count { it >= 25.0 && it < 50.0 }),
+            OrderSpendBand("GBP 50 plus", totals.count { it >= 50.0 })
+        )
+    }
+
+    private data class MarketingSummary(
+        val totalOrders: Int,
+        val totalRevenue: Double,
+        val averageOrderValue: Double,
+        val totalUnitsSold: Int,
+        val averageItemsPerOrder: Double
+    )
 }

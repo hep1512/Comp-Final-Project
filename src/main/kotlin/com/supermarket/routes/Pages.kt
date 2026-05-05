@@ -6,11 +6,20 @@ import com.supermarket.data.getCart
 import com.supermarket.data.getOrders
 import com.supermarket.models.Product
 import com.supermarket.models.UserSession
+import com.supermarket.repositories.MarketingDashboardStats
+import com.supermarket.repositories.ProductRecommendation
 import com.supermarket.data.lowStockCount
 import com.supermarket.data.outOfStockCount
 import com.supermarket.data.totalOrdersCount
 import com.supermarket.data.totalProductsCount
 import com.supermarket.data.totalSalesAmount
+import java.util.Locale
+
+private data class DashboardChartRow(
+    val label: String,
+    val valueLabel: String,
+    val value: Double
+)
 
 fun nav(session: UserSession, currentPage: String = "") = """
     <nav class="topbar">
@@ -246,6 +255,239 @@ fun commonStyles() = """
             margin-bottom: 1.5rem;
         }
 
+        .marketing-dashboard {
+            margin-top: 1.5rem;
+        }
+
+        .marketing-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .section-kicker {
+            margin: 0 0 0.35rem;
+            color: #2563eb;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .metric-card,
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .metric-card {
+            min-height: 118px;
+        }
+
+        .metric-label,
+        .metric-note,
+        .column-value {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .metric-value {
+            margin: 0.35rem 0;
+            color: #0f172a;
+            font-size: 1.7rem;
+            font-weight: 700;
+            line-height: 1.15;
+            overflow-wrap: anywhere;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .chart-title-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title-row h3 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        .bar-chart {
+            display: grid;
+            gap: 0.85rem;
+        }
+
+        .bar-row {
+            display: grid;
+            gap: 0.4rem;
+        }
+
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            font-size: 0.92rem;
+        }
+
+        .bar-label span {
+            overflow-wrap: anywhere;
+        }
+
+        .bar-label strong {
+            white-space: nowrap;
+        }
+
+        .bar-track {
+            height: 14px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #e5e7eb;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #059669, #2563eb);
+        }
+
+        .column-chart {
+            min-height: 230px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            align-items: end;
+            gap: 0.85rem;
+        }
+
+        .column-item {
+            min-width: 0;
+            display: grid;
+            grid-template-rows: 1fr auto auto;
+            gap: 0.45rem;
+            align-items: end;
+            text-align: center;
+        }
+
+        .column-plot {
+            height: 150px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            border-radius: 8px;
+            background: #eef2ff;
+            padding: 0.45rem;
+        }
+
+        .column-fill {
+            width: 100%;
+            min-height: 12px;
+            border-radius: 7px 7px 4px 4px;
+            background: linear-gradient(180deg, #f59e0b, #0ea5e9);
+        }
+
+        .column-label {
+            min-height: 2.5rem;
+            color: #1f2937;
+            font-size: 0.86rem;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+
+        .empty-chart {
+            border: 1px dashed #cbd5e1;
+            border-radius: 10px;
+            color: #64748b;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .recommendation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .recommendation-card {
+            min-height: 330px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .recommendation-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            align-items: flex-start;
+        }
+
+        .recommendation-head h3 {
+            margin-bottom: 0.35rem;
+        }
+
+        .score-pill {
+            flex: 0 0 auto;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 999px;
+            color: #1d4ed8;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 0.3rem 0.6rem;
+            white-space: nowrap;
+        }
+
+        .score-meter {
+            height: 8px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #e5e7eb;
+            margin: 0.8rem 0;
+        }
+
+        .score-meter span {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #22c55e, #0ea5e9);
+        }
+
+        .recommendation-reasons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin: 0.75rem 0 1rem;
+        }
+
+        .reason-chip {
+            background: #f1f5f9;
+            border-radius: 999px;
+            color: #334155;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.55rem;
+        }
+
+        .recommendation-card .actions {
+            margin-top: auto;
+        }
+
         @media (max-width: 900px) {
             .topbar-inner {
                 flex-direction: column;
@@ -326,7 +568,217 @@ fun loginPageHtml(error: String = "") = """
 </html>
 """.trimIndent()
 
-fun dashboardHtml(session: UserSession) = """
+private fun formatMoney(value: Double) = "&pound;${String.format(Locale.UK, "%.2f", value)}"
+
+private fun formatOneDecimal(value: Double) = String.format(Locale.UK, "%.1f", value)
+
+private fun horizontalBarChart(
+    title: String,
+    rows: List<DashboardChartRow>,
+    emptyMessage: String
+): String {
+    val positiveRows = rows.filter { it.value > 0.0 }
+    if (positiveRows.isEmpty()) {
+        return """
+        <div class="chart-card">
+            <div class="chart-title-row">
+                <h3>$title</h3>
+            </div>
+            <div class="empty-chart">$emptyMessage</div>
+        </div>
+        """
+    }
+
+    val maxValue = positiveRows.maxOf { it.value }
+    val chartRows = positiveRows.joinToString("") { row ->
+        val percent = ((row.value / maxValue) * 100).coerceIn(8.0, 100.0).toInt()
+        """
+        <div class="bar-row">
+            <div class="bar-label">
+                <span>${row.label}</span>
+                <strong>${row.valueLabel}</strong>
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill" style="width: $percent%;"></div>
+            </div>
+        </div>
+        """
+    }
+
+    return """
+    <div class="chart-card">
+        <div class="chart-title-row">
+            <h3>$title</h3>
+        </div>
+        <div class="bar-chart">
+            $chartRows
+        </div>
+    </div>
+    """
+}
+
+private fun columnChart(
+    title: String,
+    rows: List<DashboardChartRow>,
+    emptyMessage: String
+): String {
+    val positiveRows = rows.filter { it.value > 0.0 }
+    if (positiveRows.isEmpty()) {
+        return """
+        <div class="chart-card">
+            <div class="chart-title-row">
+                <h3>$title</h3>
+            </div>
+            <div class="empty-chart">$emptyMessage</div>
+        </div>
+        """
+    }
+
+    val maxValue = positiveRows.maxOf { it.value }
+    val columns = positiveRows.joinToString("") { row ->
+        val height = ((row.value / maxValue) * 100).coerceIn(12.0, 100.0).toInt()
+        """
+        <div class="column-item">
+            <div class="column-plot">
+                <div class="column-fill" style="height: $height%;"></div>
+            </div>
+            <div class="column-label">${row.label}</div>
+            <div class="column-value">${row.valueLabel}</div>
+        </div>
+        """
+    }
+
+    return """
+    <div class="chart-card">
+        <div class="chart-title-row">
+            <h3>$title</h3>
+        </div>
+        <div class="column-chart">
+            $columns
+        </div>
+    </div>
+    """
+}
+
+private fun employeeMarketingDashboardHtml(stats: MarketingDashboardStats): String {
+    val mostPopular = stats.bestSellers.firstOrNull()?.name ?: "No sales yet"
+    val strongestCategory = stats.categorySales.firstOrNull()?.category ?: "No sales yet"
+    val topProductRows = stats.bestSellers.take(5).map {
+        DashboardChartRow(it.name, "${it.unitsSold} sold", it.unitsSold.toDouble())
+    }
+    val categoryRows = stats.categorySales.take(5).map {
+        DashboardChartRow(it.category, formatMoney(it.revenue), it.revenue)
+    }
+    val spendBandRows = stats.orderSpendBands.map {
+        DashboardChartRow(it.label, "${it.orderCount} orders", it.orderCount.toDouble())
+    }
+
+    return """
+    <section class="marketing-dashboard">
+        <div class="marketing-header">
+            <div>
+                <p class="section-kicker">Employee Marketing Dashboard</p>
+                <h2>Sales Performance</h2>
+            </div>
+            <a class="btn secondary" href="/inventory">Manage Inventory</a>
+        </div>
+
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-label">Total Revenue</div>
+                <div class="metric-value">${formatMoney(stats.totalRevenue)}</div>
+                <div class="metric-note">${stats.totalOrders} completed orders</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Average Spend</div>
+                <div class="metric-value">${formatMoney(stats.averageOrderValue)}</div>
+                <div class="metric-note">Per order</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Average Basket</div>
+                <div class="metric-value">${formatOneDecimal(stats.averageItemsPerOrder)}</div>
+                <div class="metric-note">${stats.totalUnitsSold} units sold</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Top Product</div>
+                <div class="metric-value">$mostPopular</div>
+                <div class="metric-note">Top category: $strongestCategory</div>
+            </div>
+        </div>
+
+        <div class="chart-grid">
+            ${horizontalBarChart("Most Popular Products", topProductRows, "No product sales yet.")}
+            ${columnChart("Revenue by Category", categoryRows, "No category sales yet.")}
+            ${horizontalBarChart("Order Spend Bands", spendBandRows, "No completed orders yet.")}
+        </div>
+    </section>
+    """
+}
+
+private fun customerRecommendationsHtml(recommendations: List<ProductRecommendation>): String {
+    if (recommendations.isEmpty()) return ""
+
+    val cards = recommendations.joinToString("") { recommendation ->
+        val product = recommendation.product
+        val reasonChips = recommendation.reasons.joinToString("") {
+            "<span class=\"reason-chip\">$it</span>"
+        }
+
+        """
+        <div class="card recommendation-card">
+            <div class="recommendation-head">
+                <div>
+                    <h3>${product.name}</h3>
+                    <p class="muted">Category: ${product.category}</p>
+                </div>
+                <span class="score-pill">${recommendation.matchPercent}% match</span>
+            </div>
+
+            <p><strong>${formatMoney(product.price)}</strong></p>
+            <div class="score-meter">
+                <span style="width: ${recommendation.matchPercent}%;"></span>
+            </div>
+            <div class="recommendation-reasons">
+                $reasonChips
+            </div>
+            <span class="tag">${product.stock}</span>
+
+            <div class="actions">
+                <a class="btn secondary" href="/products/${product.id}">View Details</a>
+                <form method="post" action="/cart/add/${product.id}" style="display:inline;">
+                    <input type="hidden" name="quantity" value="1" />
+                    <button class="btn" type="submit">Add to Cart</button>
+                </form>
+            </div>
+        </div>
+        """
+    }
+
+    return """
+    <section class="marketing-dashboard">
+        <div class="marketing-header">
+            <div>
+                <p class="section-kicker">Recommended For You</p>
+                <h2>Products You Might Like</h2>
+            </div>
+            <a class="btn secondary" href="/products">Browse All Products</a>
+        </div>
+
+        <div class="recommendation-grid">
+            $cards
+        </div>
+    </section>
+    """
+}
+
+fun dashboardHtml(
+    session: UserSession,
+    marketingStats: MarketingDashboardStats? = null,
+    recommendations: List<ProductRecommendation> = emptyList()
+) = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -361,6 +813,9 @@ ${nav(session, "dashboard")}
             <a class="btn" href="/orders">View Orders</a>
         </div>
     </div>
+
+    ${if (marketingStats != null) employeeMarketingDashboardHtml(marketingStats) else ""}
+    ${if (marketingStats == null) customerRecommendationsHtml(recommendations) else ""}
 </div>
 </body>
 </html>

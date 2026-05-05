@@ -11,6 +11,7 @@ import com.supermarket.models.Role
 import com.supermarket.models.UserSession
 import com.supermarket.repositories.ProductRepository
 import com.supermarket.repositories.AnalyticsRepository
+import com.supermarket.repositories.RecommendationRepository
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -66,7 +67,18 @@ fun Application.registerRoutes() {
 
         get("/dashboard") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
-            call.respondText(dashboardHtml(session), ContentType.Text.Html)
+            val isStaff = session.role == Role.EMPLOYEE.name || session.role == Role.ADMIN.name
+            val marketingStats = if (isStaff) {
+                AnalyticsRepository.marketingDashboardStats()
+            } else {
+                null
+            }
+            val recommendations = if (isStaff) {
+                emptyList()
+            } else {
+                RecommendationRepository.recommendationsForCustomer(session.username)
+            }
+            call.respondText(dashboardHtml(session, marketingStats, recommendations), ContentType.Text.Html)
         }
 
         get("/products") {
