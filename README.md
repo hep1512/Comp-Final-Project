@@ -165,9 +165,8 @@ Generated build/cache folders such as `build/`, `.gradle/`, and `.gradle-user-ho
 ## Developers
 
 - Henry Payne - Backend, routing, and session management
-- Junhao Shen - Frontend, templates, and HTML
+- Junhao Shen - Frontend, Testing, HTML
 - Charlelie Chagas Poinsot - Database design and data management
-- Ella Ford - Testing and user feedback
 
 ## Security
 
