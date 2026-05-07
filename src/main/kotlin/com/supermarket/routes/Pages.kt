@@ -245,6 +245,33 @@ fun commonStyles() = """
             border-radius: 8px;
         }
 
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible {
+            outline: 3px solid #111827;
+            outline-offset: 3px;
+            box-shadow: 0 0 0 5px #fde68a;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
         .actions {
             display: flex;
             gap: 0.75rem;
@@ -611,8 +638,10 @@ fun commonStyles() = """
 
 fun loginPageHtml(error: String = "") = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Supermarket Login</title>
     <style>
         body {
@@ -620,8 +649,9 @@ fun loginPageHtml(error: String = "") = """
             display:flex;
             justify-content:center;
             align-items:center;
-            height:100vh;
+            min-height:100vh;
             margin:0;
+            padding:1rem;
             background:#f0f4f8;
         }
         .box {
@@ -629,9 +659,14 @@ fun loginPageHtml(error: String = "") = """
             padding:2rem;
             border-radius:12px;
             box-shadow:0 2px 10px rgba(0,0,0,.15);
-            width:320px;
+            width:min(320px, 100%);
         }
         h1 { margin-top:0; }
+        label {
+            display:block;
+            font-weight:600;
+            margin-bottom:.25rem;
+        }
         input {
             width:100%;
             padding:.7rem;
@@ -650,15 +685,24 @@ fun loginPageHtml(error: String = "") = """
             cursor:pointer;
             font-size:1rem;
         }
-        .error { margin-top:1rem; color:red; font-size:.9rem; }
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible {
+            outline:3px solid #111827;
+            outline-offset:3px;
+            box-shadow:0 0 0 5px #fde68a;
+        }
+        .error { margin-top:1rem; color:#b91c1c; font-size:.9rem; }
     </style>
 </head>
 <body>
 <div class="box">
     <h1>Supermarket Login</h1>
     <form method="post" action="/login">
-        <input type="text" name="username" placeholder="Username" required />
-        <input type="password" name="password" placeholder="Password" required />
+        <label for="login-username">Username</label>
+        <input id="login-username" type="text" name="username" autocomplete="username" placeholder="Username" required />
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" name="password" autocomplete="current-password" placeholder="Password" required />
         <button type="submit">Login</button>
     </form>
     ${if (error.isNotEmpty()) "<p class=\"error\">$error</p>" else ""}
@@ -846,16 +890,17 @@ private fun customerRecommendationsHtml(recommendations: List<ProductRecommendat
 
     val cards = recommendations.joinToString("") { recommendation ->
         val product = recommendation.product
+        val productName = escapeHtml(product.name)
         val reasonChips = recommendation.reasons.joinToString("") {
-            "<span class=\"reason-chip\">$it</span>"
+            "<span class=\"reason-chip\">${escapeHtml(it)}</span>"
         }
 
         """
         <div class="card recommendation-card">
             <div class="recommendation-head">
                 <div>
-                    <h3>${product.name}</h3>
-                    <p class="muted">Category: ${product.category}</p>
+                    <h3>$productName</h3>
+                    <p class="muted">Category: ${escapeHtml(product.category)}</p>
                 </div>
                 <span class="score-pill">${recommendation.matchPercent}% match</span>
             </div>
@@ -870,10 +915,10 @@ private fun customerRecommendationsHtml(recommendations: List<ProductRecommendat
             <span class="tag">${product.stock}</span>
 
             <div class="actions">
-                <a class="btn secondary" href="/products/${product.id}">View Details</a>
+                <a class="btn secondary" href="/products/${product.id}" aria-label="View details for $productName">View Details</a>
                 <form method="post" action="/cart/add/${product.id}" style="display:inline;">
                     <input type="hidden" name="quantity" value="1" />
-                    <button class="btn" type="submit">Add to Cart</button>
+                    <button class="btn" type="submit" aria-label="Add $productName to cart">Add to Cart</button>
                 </form>
             </div>
         </div>
@@ -903,8 +948,10 @@ fun dashboardHtml(
     recommendations: List<ProductRecommendation> = emptyList()
 ) = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard</title>
     ${commonStyles()}
 </head>
@@ -946,17 +993,18 @@ ${nav(session, "dashboard")}
 
 fun productsHtml(session: UserSession): String {
     val productCards = allProducts().joinToString("") { product ->
+        val productName = escapeHtml(product.name)
         """
         <div class="card">
-            <h3>${product.name}</h3>
-            <p class="muted">Category: ${product.category}</p>
+            <h3>$productName</h3>
+            <p class="muted">Category: ${escapeHtml(product.category)}</p>
             <p><strong>£${"%.2f".format(product.price)}</strong></p>
             <span class="tag">${product.stock}</span>
             <div class="actions">
-                <a class="btn secondary" href="/products/${product.id}">View Details</a>
+                <a class="btn secondary" href="/products/${product.id}" aria-label="View details for $productName">View Details</a>
                 <form method="post" action="/cart/add/${product.id}" style="display:inline;">
                     <input type="hidden" name="quantity" value="1" />
-                    <button class="btn" type="submit">Add to Cart</button>
+                    <button class="btn" type="submit" aria-label="Add $productName to cart">Add to Cart</button>
                 </form>
             </div>
         </div>
@@ -965,8 +1013,10 @@ fun productsHtml(session: UserSession): String {
 
     return """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Products</title>
     ${commonStyles()}
 </head>
@@ -986,8 +1036,10 @@ ${nav(session, "products")}
 
 fun productDetailHtml(session: UserSession, product: Product) = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${product.name}</title>
     ${commonStyles()}
 </head>
@@ -1006,7 +1058,7 @@ ${nav(session, "products")}
                 <label for="qty">Quantity</label>
                 <input id="qty" name="quantity" type="number" min="1" value="1" />
                 <div class="actions">
-                    <button class="btn" type="submit">Add to Cart</button>
+                    <button class="btn" type="submit" aria-label="Add ${escapeHtml(product.name)} to cart">Add to Cart</button>
                     <a class="btn secondary" href="/products">Back to Products</a>
                 </div>
             </form>
@@ -1030,21 +1082,23 @@ fun cartHtml(session: UserSession): String {
         cart.joinToString("") { line ->
             val product = findProduct(line.productId) ?: return@joinToString ""
             val subtotal = product.price * line.quantity
+            val productName = escapeHtml(product.name)
 
             """
             <tr>
-                <td>${product.name}</td>
+                <td>$productName</td>
                 <td>
                     <form method="post" action="/cart/update/${product.id}" style="display:flex; gap:0.5rem; align-items:center;">
-                        <input name="quantity" type="number" min="1" value="${line.quantity}" style="width:80px; margin:0;" />
-                        <button type="submit">Update</button>
+                        <label class="sr-only" for="cart-quantity-${product.id}">Quantity for $productName</label>
+                        <input id="cart-quantity-${product.id}" name="quantity" type="number" min="1" value="${line.quantity}" style="width:80px; margin:0;" />
+                        <button type="submit" aria-label="Update quantity for $productName">Update</button>
                     </form>
                 </td>
                 <td>£${"%.2f".format(product.price)}</td>
                 <td>£${"%.2f".format(subtotal)}</td>
                 <td>
                     <form method="post" action="/cart/remove/${product.id}">
-                        <button type="submit">Remove</button>
+                        <button type="submit" aria-label="Remove $productName from cart">Remove</button>
                     </form>
                 </td>
             </tr>
@@ -1059,8 +1113,10 @@ fun cartHtml(session: UserSession): String {
 
     return """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Cart</title>
     ${commonStyles()}
 </head>
@@ -1071,11 +1127,11 @@ ${nav(session, "cart")}
     <table>
         <thead>
             <tr>
-                <th>Product</th>
-                <th>Quantity</th>
-                <th>Unit Price</th>
-                <th>Subtotal</th>
-                <th>Action</th>
+                <th scope="col">Product</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">Unit Price</th>
+                <th scope="col">Subtotal</th>
+                <th scope="col">Action</th>
             </tr>
         </thead>
         <tbody>
@@ -1100,8 +1156,10 @@ ${nav(session, "cart")}
 
 fun checkoutHtml(session: UserSession) = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Checkout</title>
     ${commonStyles()}
 </head>
@@ -1110,18 +1168,18 @@ ${nav(session, "checkout")}
 <div class="container">
     <h1>Checkout</h1>
     <div class="form-box">
-        <label>Delivery Address</label>
-        <input type="text" placeholder="Enter your address" />
+        <label for="delivery-address">Delivery Address</label>
+        <input id="delivery-address" name="deliveryAddress" type="text" autocomplete="street-address" placeholder="Enter your address" />
 
-        <label>Delivery Time</label>
-        <select>
+        <label for="delivery-time">Delivery Time</label>
+        <select id="delivery-time" name="deliveryTime">
             <option>09:00 - 11:00</option>
             <option>12:00 - 14:00</option>
             <option>15:00 - 17:00</option>
         </select>
 
-        <label>Payment Method</label>
-        <select>
+        <label for="payment-method">Payment Method</label>
+        <select id="payment-method" name="paymentMethod">
             <option>Credit / Debit Card</option>
             <option>PayPal</option>
             <option>Cash on Delivery</option>
@@ -1163,8 +1221,10 @@ fun ordersHtml(session: UserSession): String {
 
     return """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Orders</title>
     ${commonStyles()}
 </head>
@@ -1175,10 +1235,10 @@ ${nav(session, "orders")}
     <table>
         <thead>
             <tr>
-                <th>Order ID</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Total</th>
+                <th scope="col">Order ID</th>
+                <th scope="col">Date</th>
+                <th scope="col">Status</th>
+                <th scope="col">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -1239,24 +1299,24 @@ fun pickListsHtml(session: UserSession, pickLists: List<PickListOrder>): String 
                         </div>
                     </div>
                     <form class="status-form" method="post" action="/picklists/update/${order.id}">
-                        <label>Update order status</label>
-                        <select name="status">
+                        <label for="picklist-status-${order.id}">Update order status for ${escapeHtml(order.displayId)}</label>
+                        <select id="picklist-status-${order.id}" name="status">
                             $statusOptions
                         </select>
-                        <button type="submit">Save Status</button>
+                        <button type="submit" aria-label="Save status for ${escapeHtml(order.displayId)}">Save Status</button>
                     </form>
                 </div>
 
                 <table>
                     <thead>
                         <tr>
-                            <th>Product</th>
-                            <th>Category</th>
-                            <th>SKU</th>
-                            <th>Pick Qty</th>
-                            <th>Stock</th>
-                            <th>Unit Price</th>
-                            <th>Pick Status</th>
+                            <th scope="col">Product</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">SKU</th>
+                            <th scope="col">Pick Qty</th>
+                            <th scope="col">Stock</th>
+                            <th scope="col">Unit Price</th>
+                            <th scope="col">Pick Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1270,8 +1330,10 @@ fun pickListsHtml(session: UserSession, pickLists: List<PickListOrder>): String 
 
     return """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Picklists</title>
     ${commonStyles()}
 </head>
@@ -1292,8 +1354,10 @@ ${nav(session, "picklists")}
 
 fun inventoryHtml(session: UserSession) = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Inventory</title>
     ${commonStyles()}
 </head>
@@ -1306,27 +1370,29 @@ ${nav(session, "inventory")}
     <table>
         <thead>
             <tr>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Current Stock</th>
-                <th>Update Stock</th>
+                <th scope="col">Product</th>
+                <th scope="col">Category</th>
+                <th scope="col">Current Stock</th>
+                <th scope="col">Update Stock</th>
             </tr>
         </thead>
         <tbody>
             ${allProducts().joinToString("") { product ->
+                val productName = escapeHtml(product.name)
                 """
                 <tr>
-                    <td>${product.name}</td>
-                    <td>${product.category}</td>
+                    <td>$productName</td>
+                    <td>${escapeHtml(product.category)}</td>
                     <td>${product.stock}</td>
                     <td>
                         <form method="post" action="/inventory/update/${product.id}" style="display:flex; gap:0.5rem; align-items:center;">
-                            <select name="stock" style="width:160px; margin:0;">
+                            <label class="sr-only" for="stock-status-${product.id}">Stock status for $productName</label>
+                            <select id="stock-status-${product.id}" name="stock" style="width:160px; margin:0;">
                                 <option value="In stock" ${if (product.stock == "In stock") "selected" else ""}>In stock</option>
                                 <option value="Low stock" ${if (product.stock == "Low stock") "selected" else ""}>Low stock</option>
                                 <option value="Out of stock" ${if (product.stock == "Out of stock") "selected" else ""}>Out of stock</option>
                             </select>
-                            <button type="submit">Update</button>
+                            <button type="submit" aria-label="Update stock for $productName">Update</button>
                         </form>
                     </td>
                 </tr>
@@ -1341,8 +1407,10 @@ ${nav(session, "inventory")}
 
 fun adminHtml(session: UserSession, message: String = "") = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin Panel</title>
     ${commonStyles()}
 </head>
@@ -1396,8 +1464,8 @@ ${nav(session, "admin")}
         <table>
             <thead>
                 <tr>
-                    <th>Status</th>
-                    <th>Count</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Count</th>
                 </tr>
             </thead>
             <tbody>
@@ -1423,8 +1491,10 @@ ${nav(session, "admin")}
 
 fun adminUsersHtml(session: UserSession, userList: String) = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Users</title>
     ${commonStyles()}
 </head>
@@ -1435,8 +1505,8 @@ ${nav(session, "users")}
     <table>
         <thead>
             <tr>
-                <th>Username</th>
-                <th>Role</th>
+                <th scope="col">Username</th>
+                <th scope="col">Role</th>
             </tr>
         </thead>
         <tbody>
@@ -1450,8 +1520,10 @@ ${nav(session, "users")}
 
 fun forbiddenHtml(session: UserSession) = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Access Denied</title>
     ${commonStyles()}
 </head>
@@ -1469,8 +1541,10 @@ ${nav(session)}
 
 fun notFoundHtml(session: UserSession, message: String) = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Not Found</title>
     ${commonStyles()}
 </head>
@@ -1529,7 +1603,7 @@ fun analyticsHtml(session: UserSession, report: AnalyticsReport): String {
         "<tr><td colspan='3'>All matching products have healthy stock levels.</td></tr>"
     } else {
         report.lowStock.joinToString("") { (name, sku, qty) ->
-            val color = if (qty == 0) "color:red;" else "color:orange;"
+            val color = if (qty == 0) "color:#b91c1c;" else "color:#92400e;"
             """
             <tr>
                 <td>${escapeHtml(name)}</td>
@@ -1542,8 +1616,10 @@ fun analyticsHtml(session: UserSession, report: AnalyticsReport): String {
 
     return """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Analytics</title>
     ${commonStyles()}
 </head>
@@ -1608,10 +1684,10 @@ ${nav(session, "analytics")}
     <table>
         <thead>
             <tr>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Units Sold</th>
-                <th>Revenue</th>
+                <th scope="col">Product</th>
+                <th scope="col">Category</th>
+                <th scope="col">Units Sold</th>
+                <th scope="col">Revenue</th>
             </tr>
         </thead>
         <tbody>
@@ -1623,9 +1699,9 @@ ${nav(session, "analytics")}
     <table>
         <thead>
             <tr>
-                <th>Category</th>
-                <th>Units Sold</th>
-                <th>Revenue</th>
+                <th scope="col">Category</th>
+                <th scope="col">Units Sold</th>
+                <th scope="col">Revenue</th>
             </tr>
         </thead>
         <tbody>
@@ -1637,9 +1713,9 @@ ${nav(session, "analytics")}
     <table>
         <thead>
             <tr>
-                <th>Product</th>
-                <th>SKU</th>
-                <th>Quantity Available</th>
+                <th scope="col">Product</th>
+                <th scope="col">SKU</th>
+                <th scope="col">Quantity Available</th>
             </tr>
         </thead>
         <tbody>
@@ -1691,7 +1767,7 @@ fun analyticsHtml(
         "<tr><td colspan='3'>All products have healthy stock levels.</td></tr>"
     } else {
         lowStock.joinToString("") { (name, sku, qty) ->
-            val color = if (qty == 0) "color:red;" else "color:orange;"
+            val color = if (qty == 0) "color:#b91c1c;" else "color:#92400e;"
             """
             <tr>
                 <td>$name</td>
@@ -1704,8 +1780,10 @@ fun analyticsHtml(
 
     return """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Analytics</title>
     ${commonStyles()}
 </head>
@@ -1719,10 +1797,10 @@ ${nav(session, "analytics")}
     <table>
         <thead>
             <tr>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Units Sold</th>
-                <th>Revenue</th>
+                <th scope="col">Product</th>
+                <th scope="col">Category</th>
+                <th scope="col">Units Sold</th>
+                <th scope="col">Revenue</th>
             </tr>
         </thead>
         <tbody>
@@ -1734,9 +1812,9 @@ ${nav(session, "analytics")}
     <table>
         <thead>
             <tr>
-                <th>Category</th>
-                <th>Units Sold</th>
-                <th>Revenue</th>
+                <th scope="col">Category</th>
+                <th scope="col">Units Sold</th>
+                <th scope="col">Revenue</th>
             </tr>
         </thead>
         <tbody>
@@ -1748,9 +1826,9 @@ ${nav(session, "analytics")}
     <table>
         <thead>
             <tr>
-                <th>Product</th>
-                <th>SKU</th>
-                <th>Quantity Available</th>
+                <th scope="col">Product</th>
+                <th scope="col">SKU</th>
+                <th scope="col">Quantity Available</th>
             </tr>
         </thead>
         <tbody>
@@ -1765,8 +1843,10 @@ ${nav(session, "analytics")}
 
 fun addProductHtml(session: UserSession, error: String = "", success: String = "") = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Add Product</title>
     ${commonStyles()}
 </head>
@@ -1781,14 +1861,14 @@ ${nav(session, "admin")}
 
     <div class="form-box">
         <form method="post" action="/admin/products/add">
-            <label>Product Name</label>
-            <input type="text" name="name" placeholder="e.g. Organic Apples" required />
+            <label for="product-name">Product Name</label>
+            <input id="product-name" type="text" name="name" placeholder="e.g. Organic Apples" required />
 
-            <label>Description</label>
-            <input type="text" name="description" placeholder="e.g. Fresh organic apples from local farms" />
+            <label for="product-description">Description</label>
+            <input id="product-description" type="text" name="description" placeholder="e.g. Fresh organic apples from local farms" />
 
-            <label>Category</label>
-            <select name="category">
+            <label for="product-category">Category</label>
+            <select id="product-category" name="category">
                 <option value="fruit-vegetables">Fruit & Vegetables</option>
                 <option value="dairy-eggs">Dairy & Eggs</option>
                 <option value="bakery">Bakery</option>
@@ -1796,14 +1876,14 @@ ${nav(session, "admin")}
                 <option value="drinks">Drinks</option>
             </select>
 
-            <label>Price (£)</label>
-            <input type="number" name="price" step="0.01" min="0" placeholder="e.g. 1.99" required />
+            <label for="product-price">Price (£)</label>
+            <input id="product-price" type="number" name="price" step="0.01" min="0" placeholder="e.g. 1.99" required />
 
-            <label>SKU</label>
-            <input type="text" name="sku" placeholder="e.g. SKU-APL-002" required />
+            <label for="product-sku">SKU</label>
+            <input id="product-sku" type="text" name="sku" placeholder="e.g. SKU-APL-002" required />
 
-            <label>Initial Stock Quantity</label>
-            <input type="number" name="stock" min="0" value="100" required />
+            <label for="product-stock">Initial Stock Quantity</label>
+            <input id="product-stock" type="number" name="stock" min="0" value="100" required />
 
             <div class="actions">
                 <button class="btn" type="submit">Add Product</button>
@@ -1818,8 +1898,10 @@ ${nav(session, "admin")}
 
 fun registerPageHtml(error: String = "", success: String = "") = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Register</title>
     <style>
         body {
@@ -1827,8 +1909,9 @@ fun registerPageHtml(error: String = "", success: String = "") = """
             display:flex;
             justify-content:center;
             align-items:center;
-            height:100vh;
+            min-height:100vh;
             margin:0;
+            padding:1rem;
             background:#f0f4f8;
         }
         .box {
@@ -1836,9 +1919,14 @@ fun registerPageHtml(error: String = "", success: String = "") = """
             padding:2rem;
             border-radius:12px;
             box-shadow:0 2px 10px rgba(0,0,0,.15);
-            width:320px;
+            width:min(320px, 100%);
         }
         h1 { margin-top:0; }
+        label {
+            display:block;
+            font-weight:600;
+            margin-bottom:.25rem;
+        }
         input {
             width:100%;
             padding:.7rem;
@@ -1857,8 +1945,15 @@ fun registerPageHtml(error: String = "", success: String = "") = """
             cursor:pointer;
             font-size:1rem;
         }
-        .error   { margin-top:1rem; color:red;   font-size:.9rem; }
-        .success { margin-top:1rem; color:green; font-size:.9rem; }
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible {
+            outline:3px solid #111827;
+            outline-offset:3px;
+            box-shadow:0 0 0 5px #fde68a;
+        }
+        .error   { margin-top:1rem; color:#b91c1c; font-size:.9rem; }
+        .success { margin-top:1rem; color:#166534; font-size:.9rem; }
         .login-link { margin-top:1rem; text-align:center; font-size:.9rem; }
         a { color:#2e7d32; }
     </style>
@@ -1867,9 +1962,12 @@ fun registerPageHtml(error: String = "", success: String = "") = """
 <div class="box">
     <h1>Create Account</h1>
     <form method="post" action="/register">
-        <input type="text"     name="username"  placeholder="Username"         required />
-        <input type="password" name="password"  placeholder="Password"         required />
-        <input type="password" name="password2" placeholder="Confirm Password" required />
+        <label for="register-username">Username</label>
+        <input id="register-username" type="text" name="username" autocomplete="username" placeholder="Username" required />
+        <label for="register-password">Password</label>
+        <input id="register-password" type="password" name="password" autocomplete="new-password" placeholder="Password" required />
+        <label for="register-password-confirm">Confirm Password</label>
+        <input id="register-password-confirm" type="password" name="password2" autocomplete="new-password" placeholder="Confirm Password" required />
         <button type="submit">Register</button>
     </form>
     ${if (error.isNotEmpty())   "<p class=\"error\">$error</p>"     else ""}
