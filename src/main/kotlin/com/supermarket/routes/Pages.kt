@@ -6,13 +6,17 @@ import com.supermarket.data.getCart
 import com.supermarket.data.getOrders
 import com.supermarket.models.Product
 import com.supermarket.models.UserSession
+import com.supermarket.repositories.AnalyticsReport
 import com.supermarket.repositories.MarketingDashboardStats
+import com.supermarket.repositories.PickListOrder
 import com.supermarket.repositories.ProductRecommendation
 import com.supermarket.data.lowStockCount
 import com.supermarket.data.outOfStockCount
 import com.supermarket.data.totalOrdersCount
 import com.supermarket.data.totalProductsCount
 import com.supermarket.data.totalSalesAmount
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 
 private data class DashboardChartRow(
@@ -34,6 +38,7 @@ fun nav(session: UserSession, currentPage: String = "") = """
                 <a class="${if (currentPage == "cart") "active" else ""}" href="/cart">Cart</a>
                 <a class="${if (currentPage == "orders") "active" else ""}" href="/orders">Orders</a>
                 ${if (session.role == "EMPLOYEE" || session.role == "ADMIN") "<a class=\"${if (currentPage == "inventory") "active" else ""}\" href=\"/inventory\">Inventory</a>" else ""}
+                ${if (session.role == "EMPLOYEE" || session.role == "ADMIN") "<a class=\"${if (currentPage == "picklists") "active" else ""}\" href=\"/picklists\">Picklists</a>" else ""}
                 ${if (session.role == "ADMIN") "<a class=\"${if (currentPage == "admin") "active" else ""}\" href=\"/admin\">Admin</a>" else ""}
                 ${if (session.role == "ADMIN") "<a class=\"${if (currentPage == "users") "active" else ""}\" href=\"/admin/users\">Users</a>" else ""}
                 ${if (session.role == "ADMIN") "<a class=\"${if (currentPage == "analytics") "active" else ""}\" href=\"/analytics\">Analytics</a>" else ""}
@@ -488,6 +493,99 @@ fun commonStyles() = """
             margin-top: auto;
         }
 
+        .filter-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin: 1rem 0 1.25rem;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: 2fr repeat(3, minmax(140px, 1fr));
+            gap: 0.85rem;
+            align-items: end;
+        }
+
+        .filter-grid input,
+        .filter-grid select {
+            margin-bottom: 0;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .notice {
+            background: #ecfdf5;
+            border: 1px solid #bbf7d0;
+            border-radius: 10px;
+            color: #166534;
+            margin-bottom: 1rem;
+            padding: 0.85rem 1rem;
+        }
+
+        .danger-note {
+            color: #b91c1c;
+            font-weight: 700;
+        }
+
+        .picklist-stack {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .picklist-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .picklist-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .picklist-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 999px;
+            color: #1d4ed8;
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 0.3rem 0.6rem;
+        }
+
+        .status-badge.warning {
+            background: #fff7ed;
+            border-color: #fed7aa;
+            color: #c2410c;
+        }
+
+        .status-form {
+            min-width: 220px;
+        }
+
+        .status-form select {
+            margin-bottom: 0.5rem;
+        }
+
         @media (max-width: 900px) {
             .topbar-inner {
                 flex-direction: column;
@@ -502,6 +600,10 @@ fun commonStyles() = """
 
             .container {
                 padding: 1.25rem;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -571,6 +673,27 @@ fun loginPageHtml(error: String = "") = """
 private fun formatMoney(value: Double) = "&pound;${String.format(Locale.UK, "%.2f", value)}"
 
 private fun formatOneDecimal(value: Double) = String.format(Locale.UK, "%.1f", value)
+
+private fun escapeHtml(value: String) = value
+    .replace("&", "&amp;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+    .replace("\"", "&quot;")
+
+private fun urlEncode(value: String) =
+    URLEncoder.encode(value, StandardCharsets.UTF_8.name())
+
+private fun analyticsQueryString(report: AnalyticsReport): String {
+    val filter = report.filter
+    val params = mutableListOf<Pair<String, String>>()
+
+    if (filter.search.isNotBlank()) params += "search" to filter.search
+    if (filter.category.isNotBlank()) params += "category" to filter.category
+    filter.from?.let { params += "from" to it.toString() }
+    filter.to?.let { params += "to" to it.toString() }
+
+    return params.joinToString("&") { (key, value) -> "${urlEncode(key)}=${urlEncode(value)}" }
+}
 
 private fun horizontalBarChart(
     title: String,
@@ -1068,6 +1191,105 @@ ${nav(session, "orders")}
 """.trimIndent()
 }
 
+fun pickListsHtml(session: UserSession, pickLists: List<PickListOrder>): String {
+    val rows = if (pickLists.isEmpty()) {
+        """
+        <div class="card">
+            <h3>No active picklists</h3>
+            <p class="muted">New checkout orders will appear here for warehouse staff.</p>
+        </div>
+        """
+    } else {
+        pickLists.joinToString("") { order ->
+            val lineRows = order.lines.joinToString("") { line ->
+                val issue = line.stockAvailable < line.quantity
+                """
+                <tr>
+                    <td>${escapeHtml(line.productName)}</td>
+                    <td>${escapeHtml(line.category)}</td>
+                    <td>${escapeHtml(line.sku)}</td>
+                    <td>${line.quantity}</td>
+                    <td>${line.stockAvailable}</td>
+                    <td>${formatMoney(line.unitPrice)}</td>
+                    <td>${if (issue) "<span class=\"danger-note\">Check stock</span>" else "Ready"}</td>
+                </tr>
+                """
+            }
+            val statusOptions = listOf("placed", "picking", "packed", "delivered").joinToString("") { status ->
+                val selected = if (status == order.status) "selected" else ""
+                "<option value=\"$status\" $selected>${status.replaceFirstChar { it.uppercase() }}</option>"
+            }
+            val issueBadge = if (order.stockIssueCount > 0) {
+                "<span class=\"status-badge warning\">${order.stockIssueCount} stock issue(s)</span>"
+            } else {
+                "<span class=\"status-badge\">Stock ready</span>"
+            }
+
+            """
+            <section class="picklist-card">
+                <div class="picklist-header">
+                    <div>
+                        <h2>${order.displayId}</h2>
+                        <p class="muted">Customer: ${escapeHtml(order.customerName)} - Placed: ${escapeHtml(order.placedAt)}</p>
+                        <div class="picklist-meta">
+                            <span class="status-badge">${escapeHtml(order.status.replaceFirstChar { it.uppercase() })}</span>
+                            <span class="status-badge">${order.itemCount} item(s)</span>
+                            <span class="status-badge">${formatMoney(order.total)}</span>
+                            $issueBadge
+                        </div>
+                    </div>
+                    <form class="status-form" method="post" action="/picklists/update/${order.id}">
+                        <label>Update order status</label>
+                        <select name="status">
+                            $statusOptions
+                        </select>
+                        <button type="submit">Save Status</button>
+                    </form>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>SKU</th>
+                            <th>Pick Qty</th>
+                            <th>Stock</th>
+                            <th>Unit Price</th>
+                            <th>Pick Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        $lineRows
+                    </tbody>
+                </table>
+            </section>
+            """
+        }
+    }
+
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Picklists</title>
+    ${commonStyles()}
+</head>
+<body>
+${nav(session, "picklists")}
+<div class="container">
+    <h1>Warehouse Picklists</h1>
+    <p class="muted">Active checkout orders for employees to pick, pack, and progress.</p>
+
+    <div class="picklist-stack">
+        $rows
+    </div>
+</div>
+</body>
+</html>
+""".trimIndent()
+}
+
 fun inventoryHtml(session: UserSession) = """
 <!DOCTYPE html>
 <html>
@@ -1117,7 +1339,7 @@ ${nav(session, "inventory")}
 </html>
 """.trimIndent()
 
-fun adminHtml(session: UserSession) = """
+fun adminHtml(session: UserSession, message: String = "") = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -1129,6 +1351,7 @@ ${nav(session, "admin")}
 <div class="container">
     <h1>Admin Dashboard</h1>
     <p class="muted">Overview of supermarket performance and stock status.</p>
+    ${if (message.isNotBlank()) "<div class=\"notice\">${escapeHtml(message)}</div>" else ""}
 
     <div class="card-grid">
         <div class="card">
@@ -1158,6 +1381,13 @@ ${nav(session, "admin")}
             <h3>Add Product</h3>
             <p class="muted">Add a new product to the catalogue.</p>
             <a class="btn" href="/admin/products/add">Add Product</a>
+        </div>
+        <div class="card">
+            <h3>Seed Sample Products</h3>
+            <p class="muted">Populate the database with extra supermarket items.</p>
+            <form method="post" action="/admin/products/seed">
+                <button class="btn secondary" type="submit">Add Sample Products</button>
+            </form>
         </div>
     </div>
 
@@ -1256,6 +1486,171 @@ ${nav(session)}
 </body>
 </html>
 """.trimIndent()
+
+fun analyticsHtml(session: UserSession, report: AnalyticsReport): String {
+    val queryString = analyticsQueryString(report)
+    val downloadHref = if (queryString.isBlank()) "/analytics/download" else "/analytics/download?$queryString"
+    val searchValue = escapeHtml(report.filter.search)
+    val categoryOptions = buildString {
+        append("<option value=\"\">All categories</option>")
+        report.categories.forEach { category ->
+            val selected = if (category == report.filter.category) "selected" else ""
+            append("<option value=\"${escapeHtml(category)}\" $selected>${escapeHtml(category)}</option>")
+        }
+    }
+    val bestSellersRows = if (report.bestSellers.isEmpty()) {
+        "<tr><td colspan='4'>No sales data matches the current filters.</td></tr>"
+    } else {
+        report.bestSellers.joinToString("") { p ->
+            """
+            <tr>
+                <td>${escapeHtml(p.name)}</td>
+                <td>${escapeHtml(p.category)}</td>
+                <td>${p.unitsSold}</td>
+                <td>${formatMoney(p.revenue)}</td>
+            </tr>
+            """
+        }
+    }
+    val categoryRows = if (report.categorySales.isEmpty()) {
+        "<tr><td colspan='3'>No category sales match the current filters.</td></tr>"
+    } else {
+        report.categorySales.joinToString("") { c ->
+            """
+            <tr>
+                <td>${escapeHtml(c.category)}</td>
+                <td>${c.unitsSold}</td>
+                <td>${formatMoney(c.revenue)}</td>
+            </tr>
+            """
+        }
+    }
+    val lowStockRows = if (report.lowStock.isEmpty()) {
+        "<tr><td colspan='3'>All matching products have healthy stock levels.</td></tr>"
+    } else {
+        report.lowStock.joinToString("") { (name, sku, qty) ->
+            val color = if (qty == 0) "color:red;" else "color:orange;"
+            """
+            <tr>
+                <td>${escapeHtml(name)}</td>
+                <td>${escapeHtml(sku)}</td>
+                <td style="$color"><strong>$qty</strong></td>
+            </tr>
+            """
+        }
+    }
+
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analytics</title>
+    ${commonStyles()}
+</head>
+<body>
+${nav(session, "analytics")}
+<div class="container">
+    <h1>Management Analytics</h1>
+    <p class="muted">Sales performance and stock overview with searchable, filterable, downloadable data.</p>
+
+    <form class="filter-card" method="get" action="/analytics">
+        <div class="filter-grid">
+            <div>
+                <label for="search">Search products or categories</label>
+                <input id="search" name="search" type="search" value="$searchValue" placeholder="e.g. milk, bakery, drinks" />
+            </div>
+            <div>
+                <label for="category">Category</label>
+                <select id="category" name="category">
+                    $categoryOptions
+                </select>
+            </div>
+            <div>
+                <label for="from">From</label>
+                <input id="from" name="from" type="date" value="${report.filter.from ?: ""}" />
+            </div>
+            <div>
+                <label for="to">To</label>
+                <input id="to" name="to" type="date" value="${report.filter.to ?: ""}" />
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button type="submit">Apply Filters</button>
+            <a class="btn secondary" href="$downloadHref">Download CSV</a>
+            <a class="btn secondary" href="/analytics">Reset</a>
+        </div>
+    </form>
+
+    <div class="metric-grid">
+        <div class="metric-card">
+            <div class="metric-label">Filtered Orders</div>
+            <div class="metric-value">${report.summary.totalOrders}</div>
+            <div class="metric-note">Orders containing matching items</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Filtered Revenue</div>
+            <div class="metric-value">${formatMoney(report.summary.totalRevenue)}</div>
+            <div class="metric-note">Revenue from matching order lines</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Units Sold</div>
+            <div class="metric-value">${report.summary.totalUnitsSold}</div>
+            <div class="metric-note">Matching product units sold</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Average Order Value</div>
+            <div class="metric-value">${formatMoney(report.summary.averageOrderValue)}</div>
+            <div class="metric-note">Within current filters</div>
+        </div>
+    </div>
+
+    <h2>Best Selling Products</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            $bestSellersRows
+        </tbody>
+    </table>
+
+    <h2 style="margin-top:2rem;">Sales by Category</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            $categoryRows
+        </tbody>
+    </table>
+
+    <h2 style="margin-top:2rem;">Low Stock Alert</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Quantity Available</th>
+            </tr>
+        </thead>
+        <tbody>
+            $lowStockRows
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
+""".trimIndent()
+}
 
 fun analyticsHtml(
     session: UserSession,

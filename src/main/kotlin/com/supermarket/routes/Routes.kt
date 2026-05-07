@@ -11,8 +11,11 @@ import com.supermarket.models.Role
 import com.supermarket.models.UserSession
 import com.supermarket.repositories.ProductRepository
 import com.supermarket.repositories.AnalyticsRepository
+import com.supermarket.repositories.AnalyticsFilter
+import com.supermarket.repositories.PickListRepository
 import com.supermarket.repositories.RecommendationRepository
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
@@ -28,6 +31,7 @@ import io.ktor.server.sessions.get
 import io.ktor.server.sessions.sessions
 import io.ktor.server.sessions.set
 import com.supermarket.data.updateProductStock
+import java.time.LocalDate
 
 
 fun Application.registerRoutes() {
@@ -165,6 +169,26 @@ fun Application.registerRoutes() {
             }
         }
 
+        get("/picklists") {
+            val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
+            requireRole(call, session, Role.EMPLOYEE, Role.ADMIN) {
+                call.respondText(
+                    pickListsHtml(session, PickListRepository.activePickLists()),
+                    ContentType.Text.Html
+                )
+            }
+        }
+
+        post("/picklists/update/{id}") {
+            val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
+            requireRole(call, session, Role.EMPLOYEE, Role.ADMIN) {
+                val orderId = call.parameters["id"] ?: ""
+                val status = call.receiveParameters()["status"] ?: ""
+                PickListRepository.updateOrderStatus(orderId, status)
+                call.respondRedirect("/picklists")
+            }
+        }
+
         post("/inventory/update/{id}") {
             val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
             requireRole(call, session, Role.EMPLOYEE, Role.ADMIN) {
@@ -185,19 +209,36 @@ fun Application.registerRoutes() {
         get("/admin") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
             requireRole(call, session, Role.ADMIN) {
-                call.respondText(adminHtml(session), ContentType.Text.Html)
+                val seeded = call.request.queryParameters["seeded"]?.toIntOrNull()
+                val message = seeded?.let {
+                    if (it == 0) "Sample products were already present." else "$it sample products added to the database."
+                } ?: ""
+                call.respondText(adminHtml(session, message), ContentType.Text.Html)
             }
         }
 
         get("/analytics") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
             requireRole(call, session, Role.ADMIN) {
-                val bestSellers = AnalyticsRepository.bestSellers()
-                val categorySales = AnalyticsRepository.salesByCategory()
-                val lowStock = AnalyticsRepository.lowStockProducts()
+                val filter = analyticsFilterFromCall(call)
                 call.respondText(
-                    analyticsHtml(session, bestSellers, categorySales, lowStock),
+                    analyticsHtml(session, AnalyticsRepository.report(filter)),
                     ContentType.Text.Html
+                )
+            }
+        }
+
+        get("/analytics/download") {
+            val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
+            requireRole(call, session, Role.ADMIN) {
+                val report = AnalyticsRepository.report(analyticsFilterFromCall(call))
+                call.response.headers.append(
+                    HttpHeaders.ContentDisposition,
+                    "attachment; filename=\"marketing-analytics.csv\""
+                )
+                call.respondText(
+                    AnalyticsRepository.toCsv(report),
+                    ContentType.parse("text/csv")
                 )
             }
         }
@@ -227,6 +268,7 @@ fun Application.registerRoutes() {
                 val category    = params["category"]    ?: ""
                 val price       = params["price"]?.toDoubleOrNull()
                 val sku         = params["sku"]         ?: ""
+                val stock       = params["stock"]?.toIntOrNull() ?: 100
 
                 if (name.isBlank() || sku.isBlank() || price == null) {
                     call.respondText(
@@ -237,7 +279,7 @@ fun Application.registerRoutes() {
                 }
 
                 try {
-                    ProductRepository.addProduct(name, description, category, price, sku)
+                    ProductRepository.addProduct(name, description, category, price, sku, stock)
                     call.respondText(
                         addProductHtml(session, success = "Product '$name' added successfully!"),
                         ContentType.Text.Html
@@ -248,6 +290,14 @@ fun Application.registerRoutes() {
                         ContentType.Text.Html
                     )
                 }
+            }
+        }
+
+        post("/admin/products/seed") {
+            val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
+            requireRole(call, session, Role.ADMIN) {
+                val inserted = ProductRepository.seedAdditionalProducts()
+                call.respondRedirect("/admin?seeded=$inserted")
             }
         }
         get("/register") {
@@ -302,6 +352,21 @@ fun Application.registerRoutes() {
         }
     }
 }
+
+private fun analyticsFilterFromCall(call: ApplicationCall): AnalyticsFilter {
+    val query = call.request.queryParameters
+    return AnalyticsFilter(
+        search = query["search"]?.trim().orEmpty(),
+        category = query["category"]?.trim().orEmpty(),
+        from = parseDate(query["from"]),
+        to = parseDate(query["to"])
+    )
+}
+
+private fun parseDate(value: String?): LocalDate? =
+    value?.takeIf { it.isNotBlank() }?.let {
+        runCatching { LocalDate.parse(it) }.getOrNull()
+    }
 
 private suspend fun requireRole(
     call: ApplicationCall,
