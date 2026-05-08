@@ -35,7 +35,7 @@ A web-based supermarket management system built with Kotlin and Ktor. Customers 
 - Kotlin
 - Ktor with Netty
 - Gradle 9.3 wrapper
-- PostgreSQL
+- Neon PostgreSQL
 - Exposed SQL
 - HikariCP
 - Kotlinx serialization
