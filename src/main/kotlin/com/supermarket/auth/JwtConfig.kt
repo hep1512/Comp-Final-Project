@@ -5,14 +5,25 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.supermarket.models.Role
 import java.util.Date
 
+// Handles JWT token creation and verification for authentication.
 object JwtConfig {
+    // Secret key used to sign JWT tokens.
     lateinit var secret: String
+
+    // JWT issuer identifier.
     lateinit var issuer: String
+
+    // Intended audience for the JWT token.
     lateinit var audience: String
 
-    private val expiresInMs = 3_600_000L // this is 1 hour in seconds
+    // Token expiration time in milliseconds (1 hour).
+    private val expiresInMs = 3_600_000L
 
-    fun generateToken(username: String, role: Role): String {
+    // Generates a signed JWT token containing the username and user role.
+    fun generateToken(
+        username: String,
+        role: Role,
+    ): String {
         return JWT.create()
             .withIssuer(issuer)
             .withAudience(audience)
@@ -22,8 +33,10 @@ object JwtConfig {
             .sign(Algorithm.HMAC256(secret))
     }
 
-    fun getVerifier() = JWT.require(Algorithm.HMAC256(secret))
-        .withIssuer(issuer)
-        .withAudience(audience)
-        .build()
+    // Returns a JWT verifier configured with issuer, audience, and secret.
+    fun getVerifier() =
+        JWT.require(Algorithm.HMAC256(secret))
+            .withIssuer(issuer)
+            .withAudience(audience)
+            .build()
 }

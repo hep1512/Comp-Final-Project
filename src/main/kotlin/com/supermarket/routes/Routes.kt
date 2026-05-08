@@ -3,17 +3,18 @@ package com.supermarket.routes
 import com.supermarket.data.addProductToCart
 import com.supermarket.data.checkoutCart
 import com.supermarket.data.findProduct
-import com.supermarket.repositories.UserRepository
 import com.supermarket.data.removeFromCart
 import com.supermarket.data.updateCartQuantity
+import com.supermarket.data.updateProductStock
 import com.supermarket.data.userStore
 import com.supermarket.models.Role
 import com.supermarket.models.UserSession
-import com.supermarket.repositories.ProductRepository
-import com.supermarket.repositories.AnalyticsRepository
 import com.supermarket.repositories.AnalyticsFilter
+import com.supermarket.repositories.AnalyticsRepository
 import com.supermarket.repositories.PickListRepository
+import com.supermarket.repositories.ProductRepository
 import com.supermarket.repositories.RecommendationRepository
+import com.supermarket.repositories.UserRepository
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -30,16 +31,16 @@ import io.ktor.server.sessions.clear
 import io.ktor.server.sessions.get
 import io.ktor.server.sessions.sessions
 import io.ktor.server.sessions.set
-import com.supermarket.data.updateProductStock
 import java.time.LocalDate
 
-
+// Registers all application routes.
 fun Application.registerRoutes() {
     routing {
         get("/") {
             call.respondRedirect("/login")
         }
 
+        // Login page
         get("/login") {
             val session = call.sessions.get<UserSession>()
             if (session != null) {
@@ -49,6 +50,7 @@ fun Application.registerRoutes() {
             call.respondText(loginPageHtml(), ContentType.Text.Html)
         }
 
+        // Handles user authentication
         post("/login") {
             val params = call.receiveParameters()
             val username = params["username"] ?: ""
@@ -69,19 +71,25 @@ fun Application.registerRoutes() {
             call.respondRedirect("/login")
         }
 
+        // Main dashboard page
         get("/dashboard") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
             val isStaff = session.role == Role.EMPLOYEE.name || session.role == Role.ADMIN.name
-            val marketingStats = if (isStaff) {
-                AnalyticsRepository.marketingDashboardStats()
-            } else {
-                null
-            }
-            val recommendations = if (isStaff) {
-                emptyList()
-            } else {
-                RecommendationRepository.recommendationsForCustomer(session.username)
-            }
+
+            val marketingStats =
+                if (isStaff) {
+                    AnalyticsRepository.marketingDashboardStats()
+                } else {
+                    null
+                }
+
+            val recommendations =
+                if (isStaff) {
+                    emptyList()
+                } else {
+                    RecommendationRepository.recommendationsForCustomer(session.username)
+                }
+
             call.respondText(dashboardHtml(session, marketingStats, recommendations), ContentType.Text.Html)
         }
 
@@ -90,6 +98,7 @@ fun Application.registerRoutes() {
             call.respondText(productsHtml(session), ContentType.Text.Html)
         }
 
+        // Product details page
         get("/products/{id}") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
             val id = call.parameters["id"]?.toIntOrNull()
@@ -99,7 +108,7 @@ fun Application.registerRoutes() {
                 call.respondText(
                     notFoundHtml(session, "Product not found."),
                     ContentType.Text.Html,
-                    HttpStatusCode.NotFound
+                    HttpStatusCode.NotFound,
                 )
             } else {
                 call.respondText(productDetailHtml(session, product), ContentType.Text.Html)
@@ -121,6 +130,7 @@ fun Application.registerRoutes() {
             call.respondText(ordersHtml(session), ContentType.Text.Html)
         }
 
+        // Add item to shopping cart
         post("/cart/add/{id}") {
             val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
             val productId = call.parameters["id"]?.toIntOrNull()
@@ -156,12 +166,14 @@ fun Application.registerRoutes() {
             call.respondRedirect("/cart")
         }
 
+        // Finalises checkout process
         post("/checkout") {
             val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
             checkoutCart(session.username)
             call.respondRedirect("/orders")
         }
 
+        // Employee and admin inventory management
         get("/inventory") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
             requireRole(call, session, Role.EMPLOYEE, Role.ADMIN) {
@@ -174,7 +186,7 @@ fun Application.registerRoutes() {
             requireRole(call, session, Role.EMPLOYEE, Role.ADMIN) {
                 call.respondText(
                     pickListsHtml(session, PickListRepository.activePickLists()),
-                    ContentType.Text.Html
+                    ContentType.Text.Html,
                 )
             }
         }
@@ -184,11 +196,13 @@ fun Application.registerRoutes() {
             requireRole(call, session, Role.EMPLOYEE, Role.ADMIN) {
                 val orderId = call.parameters["id"] ?: ""
                 val status = call.receiveParameters()["status"] ?: ""
+
                 PickListRepository.updateOrderStatus(orderId, status)
                 call.respondRedirect("/picklists")
             }
         }
 
+        // Updates stock availability labels
         post("/inventory/update/{id}") {
             val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
             requireRole(call, session, Role.EMPLOYEE, Role.ADMIN) {
@@ -206,90 +220,119 @@ fun Application.registerRoutes() {
             }
         }
 
+        // Admin dashboard
         get("/admin") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
             requireRole(call, session, Role.ADMIN) {
                 val seeded = call.request.queryParameters["seeded"]?.toIntOrNull()
-                val message = seeded?.let {
-                    if (it == 0) "Sample products were already present." else "$it sample products added to the database."
-                } ?: ""
+
+                val message =
+                    seeded?.let {
+                        if (it == 0) {
+                            "Sample products were already present."
+                        } else {
+                            "$it sample products added to the database."
+                        }
+                    } ?: ""
+
                 call.respondText(adminHtml(session, message), ContentType.Text.Html)
             }
         }
 
+        // Analytics reporting page
         get("/analytics") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
+
             requireRole(call, session, Role.ADMIN) {
                 val filter = analyticsFilterFromCall(call)
+
                 call.respondText(
                     analyticsHtml(session, AnalyticsRepository.report(filter)),
-                    ContentType.Text.Html
+                    ContentType.Text.Html,
                 )
             }
         }
 
+        // Downloads analytics data as CSV
         get("/analytics/download") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
+
             requireRole(call, session, Role.ADMIN) {
                 val report = AnalyticsRepository.report(analyticsFilterFromCall(call))
+
                 call.response.headers.append(
                     HttpHeaders.ContentDisposition,
-                    "attachment; filename=\"marketing-analytics.csv\""
+                    "attachment; filename=\"marketing-analytics.csv\"",
                 )
+
                 call.respondText(
                     AnalyticsRepository.toCsv(report),
-                    ContentType.parse("text/csv")
+                    ContentType.parse("text/csv"),
                 )
             }
         }
 
         get("/admin/users") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
+
             requireRole(call, session, Role.ADMIN) {
-                val userList = userStore.values.joinToString("") {
-                    "<tr><td>${it.username}</td><td>${it.role}</td></tr>"
-                }
+                val userList =
+                    userStore.values.joinToString("") {
+                        "<tr><td>${it.username}</td><td>${it.role}</td></tr>"
+                    }
+
                 call.respondText(adminUsersHtml(session, userList), ContentType.Text.Html)
             }
         }
+
         get("/admin/products/add") {
             val session = call.sessions.get<UserSession>() ?: return@get call.respondRedirect("/login")
+
             requireRole(call, session, Role.ADMIN) {
                 call.respondText(addProductHtml(session), ContentType.Text.Html)
             }
         }
 
+        // Adds a new product to the database
         post("/admin/products/add") {
             val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
-            requireRole(call, session, Role.ADMIN) {
-                val params      = call.receiveParameters()
-                val name        = params["name"]        ?: ""
-                val description = params["description"] ?: ""
-                val category    = params["category"]    ?: ""
-                val price       = params["price"]?.toDoubleOrNull()
-                val sku         = params["sku"]         ?: ""
-                val imageUrl    = params["imageUrl"]    ?: ""  // optional image URL
 
-                // Validate required fields
+            requireRole(call, session, Role.ADMIN) {
+                val params = call.receiveParameters()
+
+                val name = params["name"] ?: ""
+                val description = params["description"] ?: ""
+                val category = params["category"] ?: ""
+                val price = params["price"]?.toDoubleOrNull()
+                val sku = params["sku"] ?: ""
+                val imageUrl = params["imageUrl"] ?: ""
+
                 if (name.isBlank() || sku.isBlank() || price == null) {
                     call.respondText(
                         addProductHtml(session, error = "Please fill in all required fields."),
-                        ContentType.Text.Html
+                        ContentType.Text.Html,
                     )
                     return@requireRole
                 }
 
                 try {
-                    // Save product to Neon database
-                    ProductRepository.addProduct(name, description, category, price, sku, imageUrl)
+                    ProductRepository.addProduct(
+                        name,
+                        description,
+                        category,
+                        price,
+                        sku,
+                        imageUrl,
+                    )
+
                     call.respondText(
                         addProductHtml(session, success = "Product '$name' added successfully!"),
-                        ContentType.Text.Html
+                        ContentType.Text.Html,
                     )
                 } catch (e: Exception) {
                     call.respondText(
                         addProductHtml(session, error = "Error adding product: ${e.message}"),
-                        ContentType.Text.Html
+                        ContentType.Text.Html,
                     )
                 }
             }
@@ -297,56 +340,66 @@ fun Application.registerRoutes() {
 
         post("/admin/products/seed") {
             val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
+
             requireRole(call, session, Role.ADMIN) {
                 val inserted = ProductRepository.seedAdditionalProducts()
                 call.respondRedirect("/admin?seeded=$inserted")
             }
         }
+
+        // Registration page
         get("/register") {
             val session = call.sessions.get<UserSession>()
+
             if (session != null) {
                 call.respondRedirect("/dashboard")
                 return@get
             }
+
             call.respondText(registerPageHtml(), ContentType.Text.Html)
         }
 
+        // Creates a new customer account
         post("/register") {
-            val params    = call.receiveParameters()
-            val username  = params["username"]  ?: ""
-            val password  = params["password"]  ?: ""
+            val params = call.receiveParameters()
+            val username = params["username"] ?: ""
+            val password = params["password"] ?: ""
             val password2 = params["password2"] ?: ""
 
             when {
                 username.isBlank() || password.isBlank() -> {
                     call.respondText(
                         registerPageHtml(error = "Please fill in all fields."),
-                        ContentType.Text.Html
+                        ContentType.Text.Html,
                     )
                 }
+
                 password != password2 -> {
                     call.respondText(
                         registerPageHtml(error = "Passwords do not match."),
-                        ContentType.Text.Html
+                        ContentType.Text.Html,
                     )
                 }
+
                 password.length < 6 -> {
                     call.respondText(
                         registerPageHtml(error = "Password must be at least 6 characters."),
-                        ContentType.Text.Html
+                        ContentType.Text.Html,
                     )
                 }
+
                 else -> {
                     val created = UserRepository.registerUser(username, password)
+
                     if (created) {
                         call.respondText(
                             registerPageHtml(success = "Account created! You can now log in."),
-                            ContentType.Text.Html
+                            ContentType.Text.Html,
                         )
                     } else {
                         call.respondText(
                             registerPageHtml(error = "Username already taken."),
-                            ContentType.Text.Html
+                            ContentType.Text.Html,
                         )
                     }
                 }
@@ -355,30 +408,38 @@ fun Application.registerRoutes() {
     }
 }
 
+// Extracts analytics filter values from query parameters.
 private fun analyticsFilterFromCall(call: ApplicationCall): AnalyticsFilter {
     val query = call.request.queryParameters
+
     return AnalyticsFilter(
         search = query["search"]?.trim().orEmpty(),
         category = query["category"]?.trim().orEmpty(),
         from = parseDate(query["from"]),
-        to = parseDate(query["to"])
+        to = parseDate(query["to"]),
     )
 }
 
+// Safely parses optional date values.
 private fun parseDate(value: String?): LocalDate? =
     value?.takeIf { it.isNotBlank() }?.let {
         runCatching { LocalDate.parse(it) }.getOrNull()
     }
 
+// Restricts route access based on user role.
 private suspend fun requireRole(
     call: ApplicationCall,
     session: UserSession,
     vararg allowed: Role,
-    block: suspend () -> Unit
+    block: suspend () -> Unit,
 ) {
     if (Role.valueOf(session.role) in allowed) {
         block()
     } else {
-        call.respondText(forbiddenHtml(session), ContentType.Text.Html, HttpStatusCode.Forbidden)
+        call.respondText(
+            forbiddenHtml(session),
+            ContentType.Text.Html,
+            HttpStatusCode.Forbidden,
+        )
     }
 }

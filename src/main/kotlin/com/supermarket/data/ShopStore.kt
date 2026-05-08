@@ -3,18 +3,20 @@ package com.supermarket.data
 import com.supermarket.models.CartLine
 import com.supermarket.models.OrderSummary
 import com.supermarket.models.Product
-import com.supermarket.repositories.StockRepository
-import com.supermarket.repositories.ProductRepository
 import com.supermarket.repositories.OrderRepository
+import com.supermarket.repositories.ProductRepository
+import com.supermarket.repositories.StockRepository
 import java.security.MessageDigest
 
 private val cartsByUser = mutableMapOf<String, MutableList<CartLine>>()
 
+// Hashes password using sha256 for security purposes
 fun hashPassword(password: String): String {
     val bytes = MessageDigest.getInstance("SHA-256").digest(password.toByteArray())
     return bytes.joinToString("") { "%02x".format(it) }
 }
 
+// Defining useful functions for the shop system
 fun allProducts(): List<Product> = ProductRepository.allProducts()
 
 fun findProduct(productId: Int): Product? = ProductRepository.findProduct(productId)
@@ -25,7 +27,11 @@ fun getCart(username: String): MutableList<CartLine> {
 
 fun getOrders(username: String): List<OrderSummary> = OrderRepository.getOrders(username)
 
-fun addProductToCart(username: String, productId: Int, quantity: Int) {
+fun addProductToCart(
+    username: String,
+    productId: Int,
+    quantity: Int,
+) {
     if (quantity <= 0) return
     val cart = getCart(username)
     val existing = cart.find { it.productId == productId }
@@ -36,7 +42,11 @@ fun addProductToCart(username: String, productId: Int, quantity: Int) {
     }
 }
 
-fun updateCartQuantity(username: String, productId: Int, quantity: Int) {
+fun updateCartQuantity(
+    username: String,
+    productId: Int,
+    quantity: Int,
+) {
     val cart = getCart(username)
     val item = cart.find { it.productId == productId } ?: return
     if (quantity <= 0) {
@@ -46,7 +56,10 @@ fun updateCartQuantity(username: String, productId: Int, quantity: Int) {
     }
 }
 
-fun removeFromCart(username: String, productId: Int) {
+fun removeFromCart(
+    username: String,
+    productId: Int,
+) {
     val cart = getCart(username)
     cart.removeIf { it.productId == productId }
 }
@@ -58,7 +71,10 @@ fun checkoutCart(username: String) {
     cart.clear()
 }
 
-fun updateProductStock(productId: Int, newStock: String) {
+fun updateProductStock(
+    productId: Int,
+    newStock: String,
+) {
     StockRepository.updateStock(productId, newStock)
 }
 

@@ -8,71 +8,84 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.security.MessageDigest
 
 object UserRepository {
-
     fun hashPassword(password: String): String {
         val bytes = MessageDigest.getInstance("SHA-256").digest(password.toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
     private fun rowToUser(row: ResultRow): User {
-        val role = when (row[Users.role]) {
-            "admin"                        -> Role.ADMIN
-            "picker", "warehouse_manager"  -> Role.EMPLOYEE
-            else                           -> Role.USER
-        }
+        val role =
+            when (row[Users.role]) {
+                "admin" -> Role.ADMIN
+                "picker", "warehouse_manager" -> Role.EMPLOYEE
+                else -> Role.USER
+            }
         return User(
-            username     = row[Users.firstName],
+            username = row[Users.firstName],
             passwordHash = row[Users.passwordHash],
-            role         = role
+            role = role,
         )
     }
 
-    fun findByUsername(username: String): User? = transaction {
-        Users.selectAll()
-            .map { rowToUser(it) }
-            .firstOrNull { it.username == username }
-    }
+    fun findByUsername(username: String): User? =
+        transaction {
+            Users.selectAll()
+                .map { rowToUser(it) }
+                .firstOrNull { it.username == username }
+        }
 
-    fun getAllUsers(): List<User> = transaction {
-        Users.selectAll()
-            .map { rowToUser(it) }
-    }
+    fun getAllUsers(): List<User> =
+        transaction {
+            Users.selectAll()
+                .map { rowToUser(it) }
+        }
 
-    fun createUser(username: String, password: String, role: Role) = transaction {
-        val exists = Users.selectAll()
-            .map { it[Users.firstName] }
-            .any { it == username }
+    fun createUser(
+        username: String,
+        password: String,
+        role: Role,
+    ) = transaction {
+        val exists =
+            Users.selectAll()
+                .map { it[Users.firstName] }
+                .any { it == username }
 
         if (!exists) {
-            val dbRole = when (role) {
-                Role.ADMIN    -> "admin"
-                Role.EMPLOYEE -> "picker"
-                Role.USER     -> "customer"
-            }
+            val dbRole =
+                when (role) {
+                    Role.ADMIN -> "admin"
+                    Role.EMPLOYEE -> "picker"
+                    Role.USER -> "customer"
+                }
             Users.insert {
-                it[firstName]    = username
-                it[lastName]     = username
-                it[email]        = "$username@supermarket.com"
+                it[firstName] = username
+                it[lastName] = username
+                it[email] = "$username@supermarket.com"
                 it[passwordHash] = hashPassword(password)
-                it[Users.role]   = dbRole
+                it[Users.role] = dbRole
             }
         }
     }
 
-    fun registerUser(username: String, password: String): Boolean = transaction {
-        val exists = Users.selectAll()
-            .map { it[Users.firstName] }
-            .any { it == username }
+    fun registerUser(
+        username: String,
+        password: String,
+    ): Boolean =
+        transaction {
+            val exists =
+                Users.selectAll()
+                    .map { it[Users.firstName] }
+                    .any { it == username }
 
-        if (exists) return@transaction false
+            if (exists) return@transaction false
 
-        Users.insert {
-            it[firstName]    = username
-            it[lastName]     = username
-            it[email]        = "$username@supermarket.com"
-            it[passwordHash] = hashPassword(password)
-            it[Users.role]   = "customer"
+            Users.insert {
+                it[firstName] = username
+                it[lastName] = username
+                it[email] = "$username@supermarket.com"
+                it[passwordHash] = hashPassword(password)
+                it[Users.role] = "customer"
+            }
+            true
         }
-        true
-    }
 }
