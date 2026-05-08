@@ -262,14 +262,15 @@ fun Application.registerRoutes() {
         post("/admin/products/add") {
             val session = call.sessions.get<UserSession>() ?: return@post call.respondRedirect("/login")
             requireRole(call, session, Role.ADMIN) {
-                val params = call.receiveParameters()
+                val params      = call.receiveParameters()
                 val name        = params["name"]        ?: ""
                 val description = params["description"] ?: ""
                 val category    = params["category"]    ?: ""
                 val price       = params["price"]?.toDoubleOrNull()
                 val sku         = params["sku"]         ?: ""
-                val stock       = params["stock"]?.toIntOrNull() ?: 100
+                val imageUrl    = params["imageUrl"]    ?: ""  // optional image URL
 
+                // Validate required fields
                 if (name.isBlank() || sku.isBlank() || price == null) {
                     call.respondText(
                         addProductHtml(session, error = "Please fill in all required fields."),
@@ -279,7 +280,8 @@ fun Application.registerRoutes() {
                 }
 
                 try {
-                    ProductRepository.addProduct(name, description, category, price, sku, stock)
+                    // Save product to Neon database
+                    ProductRepository.addProduct(name, description, category, price, sku, imageUrl)
                     call.respondText(
                         addProductHtml(session, success = "Product '$name' added successfully!"),
                         ContentType.Text.Html

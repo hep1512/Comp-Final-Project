@@ -996,15 +996,23 @@ fun productsHtml(session: UserSession): String {
         val productName = escapeHtml(product.name)
         """
         <div class="card">
-            <h3>$productName</h3>
-            <p class="muted">Category: ${escapeHtml(product.category)}</p>
-            <p><strong>£${"%.2f".format(product.price)}</strong></p>
+            ${if (product.imageUrl.isNotBlank()) """
+                <img src="${product.imageUrl}" alt="${product.name}"
+                    style="width:100%;height:160px;object-fit:cover;border-radius:8px;margin-bottom:0.75rem;" />
+            """ else """
+                <div style="width:100%;height:160px;background:#f3f4f6;border-radius:8px;margin-bottom:0.75rem;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:0.9rem;">
+                    No image
+                </div>
+            """}
+            <h3 style="margin:0 0 0.25rem;">${product.name}</h3>
+            <p class="muted" style="margin:0 0 0.25rem;">Category: ${product.category}</p>
+            <p style="margin:0 0 0.5rem;"><strong>£${"%.2f".format(product.price)}</strong></p>
             <span class="tag">${product.stock}</span>
             <div class="actions">
-                <a class="btn secondary" href="/products/${product.id}" aria-label="View details for $productName">View Details</a>
+                <a class="btn secondary" href="/products/${product.id}">View Details</a>
                 <form method="post" action="/cart/add/${product.id}" style="display:inline;">
                     <input type="hidden" name="quantity" value="1" />
-                    <button class="btn" type="submit" aria-label="Add $productName to cart">Add to Cart</button>
+                    <button class="btn" type="submit">Add to Cart</button>
                 </form>
             </div>
         </div>
@@ -1047,6 +1055,10 @@ fun productDetailHtml(session: UserSession, product: Product) = """
 ${nav(session, "products")}
 <div class="container">
     <div class="card">
+    ${if (product.imageUrl.isNotBlank()) """
+        <img src="${product.imageUrl}" alt="${product.name}"
+            style="width:100%;max-height:300px;object-fit:cover;border-radius:8px;margin-bottom:1rem;" />
+    """ else ""}
         <h1>${product.name}</h1>
         <p class="muted">Category: ${product.category}</p>
         <p><strong>Price: £${"%.2f".format(product.price)}</strong></p>
@@ -1881,6 +1893,9 @@ ${nav(session, "admin")}
 
             <label for="product-sku">SKU</label>
             <input id="product-sku" type="text" name="sku" placeholder="e.g. SKU-APL-002" required />
+
+            <label>Image URL (optional)</label>
+            <input type="text" name="imageUrl" placeholder="https://i.ibb.co/example.jpg" />
 
             <label for="product-stock">Initial Stock Quantity</label>
             <input id="product-stock" type="number" name="stock" min="0" value="100" required />

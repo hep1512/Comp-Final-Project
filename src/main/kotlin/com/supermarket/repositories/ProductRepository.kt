@@ -14,17 +14,18 @@ object ProductRepository {
     private fun rowToProduct(row: ResultRow, index: Int): Product {
         val quantity = row[WarehouseStock.quantityAvailable]
         val stock = when {
-            quantity <= 0 -> "Out of stock"
+            quantity <= 0  -> "Out of stock"
             quantity <= 10 -> "Low stock"
-            else -> "In stock"
+            else           -> "In stock"
         }
         return Product(
-            id = index,
-            name = row[Products.name],
-            category = row[Categories.name],
-            price = row[Products.basePrice].toDouble(),
-            stock = stock,
-            description = row[Products.description] ?: ""
+            id          = index,
+            name        = row[Products.name],
+            category    = row[Categories.name],
+            price       = row[Products.basePrice].toDouble(),
+            stock       = stock,
+            description = row[Products.description] ?: "",
+            imageUrl    = row[Products.imageUrl] ?: ""
         )
     }
 
@@ -33,48 +34,42 @@ object ProductRepository {
             .selectAll()
             .mapIndexed { index, row -> rowToProduct(row, index + 1) }
     }
-    fun addProduct(
-        name: String,
-        description: String,
-        categorySlug: String,
-        price: Double,
-        sku: String,
-        stockQuantity: Int = 100
-    ) = transaction {
+
+    fun addProduct(name: String, description: String, categorySlug: String, price: Double, sku: String, imageUrl: String = "") = transaction {
         val categoryRow = Categories.selectAll()
             .map { it }
             .firstOrNull { it[Categories.slug] == categorySlug } ?: return@transaction
 
         val categoryId = categoryRow[Categories.id].value
+
+        Products.insert {
+            it[Products.name]        = name
+            it[Products.description] = description
+            it[Products.categoryId]  = categoryId
+            it[Products.basePrice]   = price.toBigDecimal()
+            it[Products.sku]         = sku
+            it[Products.imageUrl]    = imageUrl.ifBlank { null }
+            it[Products.isActive]    = true
+            it[Products.createdAt]   = java.time.OffsetDateTime.now()
+        }
+
+        // Add stock in warehouse
+        val newProductRow = Products.selectAll()
+            .map { it }
+            .firstOrNull { it[Products.sku] == sku } ?: return@transaction
+
         val warehouseId = Warehouses.selectAll()
             .map { it[Warehouses.id].value }
-            .firstOrNull()
-            ?: Warehouses.insertAndGetId {
-                it[Warehouses.name] = "Main Warehouse"
-                it[Warehouses.address] = "1 Fulfilment Way"
-                it[Warehouses.postcode] = "SW1A 1AA"
-                it[Warehouses.isActive] = true
-            }.value
-
-        val productId = Products.insertAndGetId {
-            it[Products.name] = name
-            it[Products.description] = description
-            it[Products.categoryId] = categoryId
-            it[Products.basePrice] = price.toBigDecimal()
-            it[Products.sku] = sku
-            it[Products.isActive] = true
-            it[Products.createdAt] = OffsetDateTime.now()
-        }.value
+            .firstOrNull() ?: return@transaction
 
         WarehouseStock.insert {
-            it[WarehouseStock.warehouseId] = warehouseId
-            it[WarehouseStock.productId] = productId
-            it[WarehouseStock.quantityAvailable] = stockQuantity.coerceAtLeast(0)
-            it[WarehouseStock.quantityReserved] = 0
+            it[WarehouseStock.warehouseId]       = warehouseId
+            it[WarehouseStock.productId]         = newProductRow[Products.id].value
+            it[WarehouseStock.quantityAvailable] = 100
+            it[WarehouseStock.quantityReserved]  = 0
             it[WarehouseStock.lowStockThreshold] = 10
         }
     }
-
     fun seedAdditionalProducts(): Int = transaction {
         val warehouseId = Warehouses.selectAll()
             .map { it[Warehouses.id].value }
