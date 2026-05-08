@@ -29,7 +29,7 @@ fun nav(session: UserSession, currentPage: String = "") = """
     <nav class="topbar">
         <div class="topbar-inner">
             <div class="brand">
-                <a href="/dashboard">SuperMarket</a>
+                <a href="/dashboard">PayShagas Market</a>
             </div>
 
             <div class="nav-links">
@@ -642,7 +642,7 @@ fun loginPageHtml(error: String = "") = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Supermarket Login</title>
+    <title>PayShagas Market Login</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -697,7 +697,7 @@ fun loginPageHtml(error: String = "") = """
 </head>
 <body>
 <div class="box">
-    <h1>Supermarket Login</h1>
+    <h1>PayShagas Market Login</h1>
     <form method="post" action="/login">
         <label for="login-username">Username</label>
         <input id="login-username" type="text" name="username" autocomplete="username" placeholder="Username" required />
